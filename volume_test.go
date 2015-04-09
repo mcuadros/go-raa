@@ -1,6 +1,9 @@
 package boltfs
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -9,16 +12,23 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type FSSuite struct {
-	v *Volume
+	v    *Volume
+	file string
 }
 
 var _ = Suite(&FSSuite{})
 
-const TestDBFile = "/tmp/foo.db"
+const TestDBFile = "foo.db"
 
 func (s *FSSuite) SetUpTest(c *C) {
-	var err error
-	s.v, err = NewVolume(TestDBFile)
+	tempDir, err := ioutil.TempDir("/tmp", "boltfs")
+	if err != nil {
+		panic(err)
+	}
+
+	s.file = filepath.Join(tempDir, TestDBFile)
+
+	s.v, err = NewVolume(s.file)
 	if err != nil {
 		panic(err)
 	}
@@ -26,15 +36,8 @@ func (s *FSSuite) SetUpTest(c *C) {
 
 func (s *FSSuite) TestVolume_Open(c *C) {
 	f, err := s.v.Open("foo")
-
 	c.Assert(err, IsNil)
-	c.Assert(f.Name(), Equals, "foo")
 	c.Assert(f.buf.Len(), Equals, 0)
-}
-
-func (s *FSSuite) TestVolume_OpenNew(c *C) {
-	f, err := s.v.Open("foo")
-	c.Assert(err, IsNil)
 
 	f.Write([]byte("foo"))
 	f.Close()
@@ -45,6 +48,51 @@ func (s *FSSuite) TestVolume_OpenNew(c *C) {
 	c.Assert(f.buf.Len(), Equals, 3)
 }
 
+func (s *FSSuite) TestVolume_Remove(c *C) {
+	f, _ := s.v.Open("foo")
+	f.Write([]byte("foo"))
+	f.Close()
+
+	err := s.v.Remove("foo")
+	c.Assert(err, IsNil)
+
+	f, err = s.v.Open("foo")
+	c.Assert(err, IsNil)
+	c.Assert(f.buf.Len(), Equals, 0)
+}
+
+func (s *FSSuite) TestVolume_RemoveAll(c *C) {
+	f, _ := s.v.Open("foo")
+	f.Write([]byte("foo"))
+	f.Close()
+
+	f, _ = s.v.Open("foobar")
+	f.Write([]byte("foo"))
+	f.Close()
+
+	f, _ = s.v.Open("foo/bar")
+	f.Write([]byte("foo"))
+	f.Close()
+
+	err := s.v.RemoveAll("foo")
+	c.Assert(err, IsNil)
+
+	f, err = s.v.Open("foo")
+	c.Assert(err, IsNil)
+	c.Assert(f.buf.Len(), Equals, 0)
+
+	f, err = s.v.Open("foobar")
+	c.Assert(err, IsNil)
+	c.Assert(f.buf.Len(), Equals, 3)
+
+	f, err = s.v.Open("foo/bar")
+	c.Assert(err, IsNil)
+	c.Assert(f.buf.Len(), Equals, 3)
+}
+
 func (s *FSSuite) TearDownTest(c *C) {
 	s.v.Close()
+	if err := os.Remove(s.file); err != nil {
+		panic(err)
+	}
 }

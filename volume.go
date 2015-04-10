@@ -11,7 +11,8 @@ import (
 )
 
 type Volume struct {
-	db *bolt.DB
+	path string
+	db   *bolt.DB
 }
 
 var rootBucket = []byte("root")
@@ -23,14 +24,33 @@ func NewVolume(dbFile string) (*Volume, error) {
 		return nil, err
 	}
 
-	return &Volume{db}, nil
+	return &Volume{path: "/", db: db}, nil
 }
 
-//func Chdir(dir string) error
+// Chdir changes the current working directory to the named directory.
+func (v *Volume) Chdir(dir string) error {
+	dir = filepath.Clean(dir)
+
+	if !filepath.IsAbs(dir) {
+		v.path = filepath.Join(v.path, dir)
+		return nil
+	}
+
+	v.path = dir
+	return nil
+}
+
 //func Chmod(name string, mode FileMode) error
 //func Chown(name string, uid, gid int) error
 //func Chtimes(name string, atime time.Time, mtime time.Time) error
 //func Getwd() (dir string, err error)
+
+// Getwd returns a rooted path name corresponding to the
+// current directory.
+func (v *Volume) Getwd() (dir string, err error) {
+	return v.path, nil
+}
+
 //func IsPermission(err error) bool
 //func Lchown(name string, uid, gid int) error
 //func Link(oldname, newname string) error
@@ -39,7 +59,8 @@ func NewVolume(dbFile string) (*Volume, error) {
 //func Readlink(name string) (string, error)
 
 func (v *Volume) Remove(name string) error {
-	key := []byte(name)
+	fname := filepath.Join(v.path + name)
+	key := []byte(fname)
 	return v.iterateKeys(func(b *bolt.Bucket, k, v []byte) error {
 		if bytes.Equal(k, key) {
 			if err := b.Delete(k); err != nil {
@@ -54,7 +75,8 @@ func (v *Volume) Remove(name string) error {
 }
 
 func (v *Volume) RemoveAll(path string) error {
-	key := []byte(path)
+	fname := filepath.Join(v.path + path)
+	key := []byte(fname)
 	keySlash := []byte(filepath.Join(path, "/") + "/")
 	return v.iterateKeys(func(b *bolt.Bucket, k, v []byte) error {
 		if bytes.Equal(k, key) || bytes.HasPrefix(k, keySlash) {
@@ -97,12 +119,13 @@ func (v *Volume) iterateKeys(cb func(b *bolt.Bucket, k, v []byte) error) error {
 //func Create(name string) (file *File, err error)
 
 func (v *Volume) Open(name string) (*File, error) {
-	file, err := v.readFile(name)
+	fname := filepath.Join(v.path + name)
+	file, err := v.readFile(fname)
 	if err != nil || file != nil {
 		return file, err
 	}
 
-	return newFile(name, v), nil
+	return newFile(fname, v), nil
 }
 
 func (v *Volume) readFile(name string) (*File, error) {

@@ -3,6 +3,7 @@ package boltfs
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 )
@@ -22,11 +23,35 @@ func newFile(name string, v *Volume) *File {
 	}
 }
 
-//func (f *File) Chdir() error
-//func (f *File) Chmod(mode FileMode) error
-//func (f *File) Chown(uid, gid int) error
+// Chdir changes the current working directory to the file,
+// which must be a directory.
+// If there is an error, it will be of type *PathError.
+func (f *File) Chdir() error {
+	if !f.hdr.FileInfo().IsDir() {
+		return &os.PathError{"chdir", f.hdr.Name, errors.New("not a directory")}
+	}
 
+	return f.v.Chdir(f.hdr.Name)
+}
+
+// Chmod changes the mode of the file to mode.
+func (f *File) Chmod(mode os.FileMode) error {
+	f.hdr.Mode = int64(mode.Perm())
+
+	return nil
+}
+
+// Chown changes the numeric uid and gid of the named file.
+func (f *File) Chown(uid, gid int) error {
+	f.hdr.Uid = uid
+	f.hdr.Gid = gid
+
+	return nil
+}
+
+// Close closes the File, rendering it unusable for I/O.
 func (f *File) Close() error {
+	f.IsClosed = true
 	return f.Sync()
 }
 
@@ -39,6 +64,10 @@ func (f *File) Name() string {
 
 // Read reads up to len(b) bytes from the File.
 func (f *File) Read(b []byte) (int, error) {
+	if f.IsClosed {
+		return 0, &os.PathError{"read", f.hdr.Name, errors.New("cannot read from a closed file")}
+	}
+
 	n, err := f.buf.Read(b)
 	if err != nil {
 		err = &os.PathError{"read", f.hdr.Name, err}
@@ -73,6 +102,10 @@ func (f *File) Truncate(size int64) error {
 // It returns the number of bytes written and an error, if any.
 // Write returns a non-nil error when n != len(b).
 func (f *File) Write(b []byte) (int, error) {
+	if f.IsClosed {
+		return 0, &os.PathError{"read", f.hdr.Name, errors.New("cannot write to a closed file")}
+	}
+
 	n, err := f.buf.Write(b)
 	f.hdr.Size += int64(n)
 

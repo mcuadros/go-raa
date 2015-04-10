@@ -34,6 +34,28 @@ func (s *FSSuite) SetUpTest(c *C) {
 	}
 }
 
+func (s *FSSuite) TestVolume_ChdirAndGetcwd(c *C) {
+	c.Assert(s.v.path, Equals, "/")
+
+	err := s.v.Chdir("foo")
+	c.Assert(err, IsNil)
+	c.Assert(s.v.path, Equals, "/foo")
+
+	err = s.v.Chdir("foo")
+	c.Assert(err, IsNil)
+	c.Assert(s.v.path, Equals, "/foo/foo")
+
+	err = s.v.Chdir("..")
+	c.Assert(err, IsNil)
+	c.Assert(s.v.path, Equals, "/foo")
+
+	err = s.v.Chdir("/bar")
+	c.Assert(err, IsNil)
+
+	path, err := s.v.Getwd()
+	c.Assert(path, Equals, "/bar")
+}
+
 func (s *FSSuite) TestVolume_Open(c *C) {
 	f, err := s.v.Open("foo")
 	c.Assert(err, IsNil)
@@ -44,7 +66,7 @@ func (s *FSSuite) TestVolume_Open(c *C) {
 
 	f, err = s.v.Open("foo")
 	c.Assert(err, IsNil)
-	c.Assert(f.Name(), Equals, "foo")
+	c.Assert(f.Name(), Equals, "/foo")
 	c.Assert(f.buf.Len(), Equals, 3)
 }
 

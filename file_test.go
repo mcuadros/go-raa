@@ -1,7 +1,6 @@
 package boltfs
 
 import (
-	"bytes"
 	"io"
 	"os"
 
@@ -11,13 +10,13 @@ import (
 const longFile = "benchmark/fixtures/6133_files.tar"
 
 func (s *FSSuite) TestFile_Chdir(c *C) {
-	f, _ := s.v.Open("foo")
+	f, _ := s.v.Create("foo")
 	err := f.Chdir()
 	c.Assert(err, FitsTypeOf, &os.PathError{})
 }
 
 func (s *FSSuite) TestFile_Stat(c *C) {
-	f, err := s.v.Open("foo")
+	f, err := s.v.Create("foo")
 	f.WriteString("foo")
 	c.Assert(err, IsNil)
 
@@ -27,7 +26,7 @@ func (s *FSSuite) TestFile_Stat(c *C) {
 }
 
 func (s *FSSuite) TestFile_Write(c *C) {
-	f := &File{buf: bytes.NewBuffer(nil)}
+	f := newFile(nil, "", os.O_WRONLY, 0)
 	n, err := f.Write([]byte{'F', 'O', 'O'})
 
 	c.Assert(err, IsNil)
@@ -36,15 +35,34 @@ func (s *FSSuite) TestFile_Write(c *C) {
 }
 
 func (s *FSSuite) TestFile_WriteInClosed(c *C) {
-	f, err := s.v.Open("foo")
+	f, err := s.v.Create("foo")
 	f.Close()
 
 	_, err = f.Write([]byte{'F', 'O', 'O'})
 	c.Assert(err, FitsTypeOf, &os.PathError{})
 }
 
+func (s *FSSuite) TestFile_WriteInNonWritale(c *C) {
+	f := newFile(nil, "", os.O_RDONLY, 0)
+
+	_, err := f.Write([]byte{'F', 'O', 'O'})
+	c.Assert(err, FitsTypeOf, &os.PathError{})
+}
+
+func (s *FSSuite) TestFile_WriteInSynced(c *C) {
+	f, _ := s.v.OpenFile("foo", os.O_WRONLY|os.O_SYNC|os.O_CREATE, 0)
+	f.WriteString("foo")
+
+	r, _ := s.v.OpenFile("foo", os.O_RDONLY, 0)
+	c.Assert(r.buf.String(), Equals, "foo")
+
+	f.WriteString("bar")
+	r, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
+	c.Assert(r.buf.String(), Equals, "foobar")
+}
+
 func (s *FSSuite) TestFile_WriteString(c *C) {
-	f := &File{buf: bytes.NewBuffer(nil)}
+	f := newFile(nil, "", os.O_WRONLY, 0)
 	n, err := f.WriteString("foo")
 
 	c.Assert(err, IsNil)
@@ -60,7 +78,7 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 
 	defer osFile.Close()
 
-	fsFile, err := s.v.Open("foo")
+	fsFile, err := s.v.Create("foo")
 	c.Assert(err, IsNil)
 
 	n, err := io.Copy(fsFile, osFile)
@@ -76,8 +94,15 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 }
 
 func (s *FSSuite) TestFile_ReadInClosed(c *C) {
-	f, _ := s.v.Open("foo")
+	f, _ := s.v.Create("foo")
 	f.Close()
+
+	_, err := f.Read(nil)
+	c.Assert(err, FitsTypeOf, &os.PathError{})
+}
+
+func (s *FSSuite) TestFile_ReadInNonReadable(c *C) {
+	f := newFile(nil, "", os.O_WRONLY, 0)
 
 	_, err := f.Read(nil)
 	c.Assert(err, FitsTypeOf, &os.PathError{})

@@ -25,9 +25,9 @@ const FixtureDbParttern = "fixtures/%d_files.db"
 
 const RandomSeed = 42
 
-var files78 map[int]string
-var files6133 map[int]string
-var files820 map[int]string
+var files78 []string
+var files6133 []string
+var files820 []string
 
 func (s *FSSuite) SetUpSuite(c *C) {
 	files78 = buildVolumeFromTar(78)
@@ -39,7 +39,7 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_78(c *C) {
 	rand.Seed(42)
 
 	for i := 0; i < c.N; i++ {
-		openTarAndReadFile(78)
+		openTarAndReadFile(78, files78)
 	}
 }
 
@@ -47,7 +47,7 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_1k(c *C) {
 	rand.Seed(42)
 
 	for i := 0; i < c.N; i++ {
-		openTarAndReadFile(820)
+		openTarAndReadFile(820, files820)
 	}
 }
 
@@ -55,7 +55,7 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_6k(c *C) {
 	rand.Seed(42)
 
 	for i := 0; i < c.N; i++ {
-		openTarAndReadFile(6133)
+		openTarAndReadFile(6133, files6133)
 	}
 }
 
@@ -80,8 +80,8 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6k(c *C) {
 	}
 }
 
-func buildVolumeFromTar(files int) map[int]string {
-	result := make(map[int]string, files)
+func buildVolumeFromTar(files int) []string {
+	result := make([]string, 0)
 
 	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, files))
 	if err != nil {
@@ -100,16 +100,20 @@ func buildVolumeFromTar(files int) map[int]string {
 		if err == io.EOF {
 			break
 		}
+
 		ifErrPanic(err)
 
-		file, err := v.Open(hdr.Name)
+		file, err := v.Create(hdr.Name)
 		ifErrPanic(err)
 
 		_, err = io.Copy(file, tar)
 		ifErrPanic(err)
 		file.Close()
 
-		result[cur] = hdr.Name
+		if !hdr.FileInfo().IsDir() {
+			result = append(result, hdr.Name)
+		}
+
 		cur++
 	}
 
@@ -117,8 +121,8 @@ func buildVolumeFromTar(files int) map[int]string {
 	return result
 }
 
-func openDbAndReadFile(files int, names map[int]string) {
-	randomFile := names[rand.Intn(files)]
+func openDbAndReadFile(files int, names []string) {
+	randomFile := names[rand.Intn(len(names))]
 
 	v, err := boltfs.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
 	if err != nil {
@@ -129,23 +133,31 @@ func openDbAndReadFile(files int, names map[int]string) {
 	ifErrPanic(err)
 
 	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, file)
-	ifErrPanic(err)
+
+	s, _ := file.Stat()
+
+	n, err := io.Copy(buf, file)
+
+	if s.Size() != n {
+		panic("ws")
+	}
+
+	//ifErrPanic(err)
 
 	v.Close()
 }
 
-func openTarAndReadFile(files int) {
-	randomFileNumber := rand.Intn(files)
+func openTarAndReadFile(files int, names []string) {
+	randomFile := names[rand.Intn(len(names))]
 	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, files))
 	if err != nil {
 		panic(err)
 	}
 
 	tar := tar.NewReader(file)
-	cur := 0
+	found := false
 	for {
-		_, err := tar.Next()
+		hdr, err := tar.Next()
 		if err == io.EOF {
 			break
 		}
@@ -155,17 +167,20 @@ func openTarAndReadFile(files int) {
 		_, err = io.Copy(buf, tar)
 		ifErrPanic(err)
 
-		if cur == randomFileNumber {
+		if hdr.Name == randomFile {
 			//fmt.Printf("Contents of %s:\n", hdr.Name)
+			found = true
 			break
 		}
+	}
 
-		cur++
+	if !found {
+		panic("Cannot find file: " + randomFile)
 	}
 }
 
 func ifErrPanic(err error) {
-	if err != nil {
+	if err != nil && err != io.EOF {
 		panic(err)
 	}
 }

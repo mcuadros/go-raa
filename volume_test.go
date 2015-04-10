@@ -57,7 +57,7 @@ func (s *FSSuite) TestVolume_ChdirAndGetcwd(c *C) {
 }
 
 func (s *FSSuite) TestVolume_Open(c *C) {
-	f, err := s.v.Open("foo")
+	f, err := s.v.Create("foo")
 	c.Assert(err, IsNil)
 	c.Assert(f.buf.Len(), Equals, 0)
 
@@ -70,8 +70,35 @@ func (s *FSSuite) TestVolume_Open(c *C) {
 	c.Assert(f.buf.Len(), Equals, 3)
 }
 
+func (s *FSSuite) TestVolume_OpenFile(c *C) {
+	f, err := s.v.OpenFile("foo", os.O_EXCL|os.O_CREATE, 0)
+	c.Assert(err, IsNil)
+	c.Assert(f.buf.Len(), Equals, 0)
+
+	f.Write([]byte("foo"))
+	f.Close()
+
+	f, err = s.v.OpenFile("foo", os.O_EXCL, 0)
+	c.Assert(err, FitsTypeOf, &os.PathError{})
+}
+
+func (s *FSSuite) TestVolume_Create(c *C) {
+	f, err := s.v.Create("foo")
+	c.Assert(err, IsNil)
+	c.Assert(f.buf.Len(), Equals, 0)
+
+	f.Write([]byte("foo"))
+	f.Close()
+
+	f, err = s.v.Create("foo")
+	c.Assert(err, IsNil)
+	c.Assert(f.Name(), Equals, "/foo")
+	c.Assert(f.hdr.Size, Equals, int64(0))
+	c.Assert(f.buf.Len(), Equals, 0)
+}
+
 func (s *FSSuite) TestVolume_Remove(c *C) {
-	f, _ := s.v.Open("foo")
+	f, _ := s.v.Create("foo")
 	f.Write([]byte("foo"))
 	f.Close()
 
@@ -79,20 +106,19 @@ func (s *FSSuite) TestVolume_Remove(c *C) {
 	c.Assert(err, IsNil)
 
 	f, err = s.v.Open("foo")
-	c.Assert(err, IsNil)
-	c.Assert(f.buf.Len(), Equals, 0)
+	c.Assert(err, Not(IsNil))
 }
 
 func (s *FSSuite) TestVolume_RemoveAll(c *C) {
-	f, _ := s.v.Open("foo")
+	f, _ := s.v.Create("foo")
 	f.Write([]byte("foo"))
 	f.Close()
 
-	f, _ = s.v.Open("foobar")
+	f, _ = s.v.Create("foobar")
 	f.Write([]byte("foo"))
 	f.Close()
 
-	f, _ = s.v.Open("foo/bar")
+	f, _ = s.v.Create("foo/bar")
 	f.Write([]byte("foo"))
 	f.Close()
 
@@ -100,8 +126,7 @@ func (s *FSSuite) TestVolume_RemoveAll(c *C) {
 	c.Assert(err, IsNil)
 
 	f, err = s.v.Open("foo")
-	c.Assert(err, IsNil)
-	c.Assert(f.buf.Len(), Equals, 0)
+	c.Assert(err, Not(IsNil))
 
 	f, err = s.v.Open("foobar")
 	c.Assert(err, IsNil)

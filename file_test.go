@@ -109,10 +109,15 @@ func (s *FSSuite) TestFile_ReadInNonReadable(c *C) {
 }
 
 func (s *FSSuite) TestFile_Close(c *C) {
-	v, _ := NewVolume(TestDBFile)
+	v, err := NewVolume(TestDBFile)
+	if err != nil {
+		panic(err)
+	}
+
 	defer v.Close()
 
-	f, err := v.Open("foo")
+	f, err := v.Create("foo")
+	c.Assert(err, IsNil)
 
 	err = f.Close()
 	c.Assert(err, IsNil)

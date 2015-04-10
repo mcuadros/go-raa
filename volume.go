@@ -19,7 +19,7 @@ type Volume struct {
 var rootBucket = []byte("root")
 var (
 	stopError     = errors.New("stop")
-	foundError    = errors.New("file must not exist")
+	foundError    = errors.New("file already exist")
 	notFoundError = errors.New("no such file or directory")
 )
 
@@ -66,7 +66,7 @@ func (v *Volume) Getwd() (dir string, err error) {
 // Remove removes the named file or directory.
 // If there is an error, it will be of type *PathError.
 func (v *Volume) Remove(name string) error {
-	fname := filepath.Join(v.path + name)
+	fname := v.getFullpath(name)
 	key := []byte(fname)
 	return v.iterateKeys(func(b *bolt.Bucket, k, v []byte) error {
 		if bytes.Equal(k, key) {
@@ -86,7 +86,7 @@ func (v *Volume) Remove(name string) error {
 // it encounters.  If the path does not exist, RemoveAll
 // returns nil (no error).
 func (v *Volume) RemoveAll(path string) error {
-	fname := filepath.Join(v.path + path)
+	fname := v.getFullpath(path)
 	key := []byte(fname)
 	keySlash := []byte(filepath.Join(path, "/") + "/")
 	return v.iterateKeys(func(b *bolt.Bucket, k, v []byte) error {
@@ -123,7 +123,28 @@ func (v *Volume) iterateKeys(cb func(b *bolt.Bucket, k, v []byte) error) error {
 	return err
 }
 
-//func Rename(oldpath, newpath string) error
+// Rename renames (moves) a file.
+func (v *Volume) Rename(oldpath, newpath string) error {
+	oldpath = v.getFullpath(oldpath)
+	newpath = v.getFullpath(newpath)
+
+	src, err := v.Open(oldpath)
+	if err != nil {
+		return err
+	}
+
+	dst, err := v.OpenFile(newpath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, src.hdr.FileInfo().Mode())
+	if err != nil {
+		return err
+	}
+
+	defer dst.Close()
+	defer v.Remove(oldpath)
+
+	_, err = io.Copy(dst, src)
+	return err
+}
+
 //func SameFile(fi1, fi2 FileInfo) bool
 //func Symlink(oldname, newname string) error
 //func Truncate(name string, size int64) error
@@ -136,7 +157,7 @@ func (v *Volume) iterateKeys(cb func(b *bolt.Bucket, k, v []byte) error) error {
 // If there is an error, it will be of type *PathError.
 func (v *Volume) OpenFile(name string, flag int, perm os.FileMode) (file *File, err error) {
 	//TODO: Implement O_APPEND
-	fname := filepath.Join(v.path + name)
+	fname := v.getFullpath(name)
 
 	f := newFile(v, fname, flag, perm)
 	if flag&os.O_TRUNC != 0 {
@@ -214,10 +235,40 @@ func (v *Volume) Create(name string) (file *File, err error) {
 	return v.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
-//func OpenFile(name string, flag int, perm FileMode) (file *File, err error)
 //func Pipe() (r *File, w *File, err error)
 //func Lstat(name string) (fi FileInfo, err error)
-//func Stat(name string) (fi FileInfo, err error)
+
+// Stat returns a FileInfo describing the named file.
+// If there is an error, it will be of type *PathError.
+func (v *Volume) Stat(name string) (os.FileInfo, error) {
+	f, err := v.Open(v.getFullpath(name))
+	if err != nil {
+		return nil, err
+	}
+
+	return f.Stat()
+}
+
+// Find return the names of the files matching with the function matcher
+func (v *Volume) Find(matcher func(string) bool) []string {
+	r := make([]string, 0)
+	v.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(rootBucket)
+		c := b.Cursor()
+
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			name := string(k)
+
+			if matcher(name) {
+				r = append(r, name)
+			}
+		}
+
+		return nil
+	})
+
+	return r
+}
 
 // Close the Volumen and releases all database resources.
 func (v *Volume) Close() error {
@@ -254,4 +305,8 @@ func (v *Volume) getHeaderBytes(f *File) ([]byte, error) {
 	}
 
 	return b.Bytes(), nil
+}
+
+func (v *Volume) getFullpath(name string) string {
+	return filepath.Join(v.path + name)
 }

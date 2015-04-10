@@ -94,11 +94,11 @@ func (f *File) Read(b []byte) (int, error) {
 	}
 
 	n, err := f.buf.Read(b)
-	if err != nil {
-		err = &os.PathError{"read", f.hdr.Name, err}
+	if err == io.EOF || err == nil {
+		return n, err
 	}
 
-	return n, err
+	return n, &os.PathError{"read", f.hdr.Name, err}
 }
 
 //func (f *File) ReadAt(b []byte, off int64) (n int, err error)

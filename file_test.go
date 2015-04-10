@@ -116,7 +116,8 @@ func (s *FSSuite) TestFile_Close(c *C) {
 
 	defer v.Close()
 
-	f, err := v.Open("foo")
+	f, err := v.Create("foo")
+	c.Assert(err, IsNil)
 
 	err = f.Close()
 	c.Assert(err, IsNil)

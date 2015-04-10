@@ -1,11 +1,13 @@
 package boltfs
 
 import (
+	"archive/tar"
 	"bytes"
 )
 
 type File struct {
 	name string
+	hdr  tar.Header
 	buf  *bytes.Buffer
 	v    *Volume
 }
@@ -41,12 +43,17 @@ func (f *File) Truncate(size int64) error {
 	return nil
 }
 
-func (f *File) Write(b []byte) (n int, err error) {
-	return f.buf.Write(b)
+func (f *File) Write(b []byte) (int, error) {
+	n, err := f.buf.Write(b)
+	f.hdr.Size += int64(n)
+	return n, err
 }
 
 //func (f *File) WriteAt(b []byte, off int64) (n int, err error) {}
 
-func (f *File) WriteString(s string) (ret int, err error) {
-	return f.buf.WriteString(s)
+func (f *File) WriteString(s string) (int, error) {
+	n, err := f.buf.WriteString(s)
+	f.hdr.Size += int64(n)
+
+	return n, err
 }

@@ -1,8 +1,10 @@
 package boltfs
 
 import (
+	"archive/tar"
 	"bytes"
 	"errors"
+	"io"
 	"path/filepath"
 
 	"github.com/boltdb/bolt"
@@ -95,23 +97,45 @@ func (v *Volume) iterateKeys(cb func(b *bolt.Bucket, k, v []byte) error) error {
 //func Create(name string) (file *File, err error)
 
 func (v *Volume) Open(name string) (*File, error) {
-	buf := bytes.NewBuffer(nil)
+	f := &File{
+		name: name,
+		hdr:  tar.Header{Name: name},
+		buf:  bytes.NewBuffer(nil),
+		v:    v,
+	}
 
-	v.db.View(func(tx *bolt.Tx) error {
+	err := v.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(rootBucket)
 		if b == nil {
 			return nil
 		}
 
+		buf := bytes.NewBuffer(nil)
 		buf.Write(b.Get([]byte(name)))
+
+		r := tar.NewReader(buf)
+		hdr, err := r.Next()
+		if hdr == nil {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		f.hdr = *hdr
+		if _, err := io.Copy(f.buf, r); err != nil {
+			return err
+		}
+
 		return nil
 	})
 
-	return &File{
-		name: name,
-		buf:  buf,
-		v:    v,
-	}, nil
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }
 
 //func OpenFile(name string, flag int, perm FileMode) (file *File, err error)
@@ -130,10 +154,27 @@ func (v *Volume) writeFile(f *File) error {
 			return err
 		}
 
-		if err = b.Put([]byte(f.Name()), f.buf.Bytes()); err != nil {
+		content, err := v.getHeaderBytes(f)
+		if err != nil {
+			return err
+		}
+
+		content = append(content, f.buf.Bytes()...)
+
+		if err = b.Put([]byte(f.Name()), content); err != nil {
 			return err
 		}
 
 		return nil
 	})
+}
+
+func (v *Volume) getHeaderBytes(f *File) ([]byte, error) {
+	b := bytes.NewBuffer(nil)
+	w := tar.NewWriter(b)
+	if err := w.WriteHeader(&f.hdr); err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
 }

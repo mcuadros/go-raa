@@ -97,13 +97,16 @@ func (v *Volume) iterateKeys(cb func(b *bolt.Bucket, k, v []byte) error) error {
 //func Create(name string) (file *File, err error)
 
 func (v *Volume) Open(name string) (*File, error) {
-	f := &File{
-		name: name,
-		hdr:  tar.Header{Name: name},
-		buf:  bytes.NewBuffer(nil),
-		v:    v,
+	file, err := v.readFile(name)
+	if err != nil || file != nil {
+		return file, err
 	}
 
+	return newFile(name, v), nil
+}
+
+func (v *Volume) readFile(name string) (*File, error) {
+	f := newFile(name, v)
 	err := v.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(rootBucket)
 		if b == nil {

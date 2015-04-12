@@ -1,4 +1,4 @@
-package boltfs
+package raa
 
 import (
 	"os"
@@ -21,26 +21,32 @@ type FileInfo struct {
 	Inode
 }
 
-func (i *FileInfo) Name() string {
-	return path.Base(i.Inode.Name)
+// Name returns base name of the file
+func (fi *FileInfo) Name() string {
+	return path.Base(fi.Inode.Name)
 }
 
-func (i *FileInfo) Size() int64 {
-	return i.Inode.Size
+// Size returns the length in bytes
+func (fi *FileInfo) Size() int64 {
+	return fi.Inode.Size
 }
 
-func (i *FileInfo) Mode() os.FileMode {
-	return i.Inode.Mode
+// Mode returns the file mode bits
+func (fi *FileInfo) Mode() os.FileMode {
+	return fi.Inode.Mode
 }
 
-func (i *FileInfo) ModTime() time.Time {
-	return i.Inode.ModifcatedAt
+// ModeTime returns the modification time
+func (fi *FileInfo) ModTime() time.Time {
+	return fi.Inode.ModifcatedAt
 }
 
-func (i *FileInfo) IsDir() bool {
+// IsDir is present just for match the interface
+func (fi *FileInfo) IsDir() bool {
 	return false
 }
 
-func (i *FileInfo) Sys() interface{} {
-	return nil
+// Sys returns the Inode value
+func (fi *FileInfo) Sys() interface{} {
+	return fi.Inode
 }

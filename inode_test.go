@@ -1,4 +1,4 @@
-package boltfs
+package raa
 
 import (
 	. "gopkg.in/check.v1"

@@ -1,4 +1,4 @@
-package boltfs
+package raa
 
 import (
 	"io/ioutil"
@@ -22,7 +22,7 @@ var _ = Suite(&FSSuite{})
 const TestDBFile = "foo.db"
 
 func (s *FSSuite) SetUpTest(c *C) {
-	tempDir, err := ioutil.TempDir("/tmp", "boltfs")
+	tempDir, err := ioutil.TempDir("/tmp", "raa")
 	if err != nil {
 		panic(err)
 	}

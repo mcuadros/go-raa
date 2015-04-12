@@ -1,4 +1,4 @@
-package boltfs
+package raa
 
 import (
 	"io"
@@ -125,6 +125,18 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(fsFile.inode.Size, Equals, int64(26334208))
 	c.Assert(fsFile.buf.Len(), Equals, 26334208)
+}
+
+func (s *FSSuite) TestFile_Read(c *C) {
+	f, _ := s.v.Create("foo")
+	f.WriteString("foo")
+	defer f.Close()
+
+	content := make([]byte, 3)
+	n, err := f.Read(content)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 3)
+	c.Assert(string(content), Equals, "foo")
 }
 
 func (s *FSSuite) TestFile_ReadInClosed(c *C) {

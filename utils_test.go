@@ -1,4 +1,4 @@
-package boltfs
+package raa
 
 import (
 	"io/ioutil"
@@ -9,7 +9,7 @@ import (
 )
 
 func (s *FSSuite) TestAddFile(c *C) {
-	src, err := ioutil.TempFile("/tmp/", "perms_boltfs")
+	src, err := ioutil.TempFile("/tmp/", "perms_raa")
 	c.Assert(err, IsNil)
 
 	src.WriteString("foo")

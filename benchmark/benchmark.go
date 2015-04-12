@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/mcuadros/boltfs"
+	"github.com/mcuadros/raa"
 )
 
 const FixtureTarPattern = "fixtures/%d_files.tar"
@@ -22,7 +22,7 @@ func buildVolumeFromTar(files int) []string {
 		panic(err)
 	}
 
-	v, err := boltfs.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
+	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +58,7 @@ func buildVolumeFromTar(files int) []string {
 func openDbAndReadFile(files int, names []string) {
 	randomFile := names[rand.Intn(len(names))]
 
-	v, err := boltfs.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
+	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
 	if err != nil {
 		panic(err)
 	}

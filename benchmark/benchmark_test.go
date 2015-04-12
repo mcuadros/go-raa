@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/mcuadros/boltfs"
+	"github.com/mcuadros/raa"
 
 	. "gopkg.in/check.v1"
 )
@@ -66,7 +66,7 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6k(c *C) {
 }
 
 func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
-	v, err := boltfs.NewVolume(fmt.Sprintf(FixtureDbParttern, 6133))
+	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, 6133))
 	if err != nil {
 		panic(err)
 	}

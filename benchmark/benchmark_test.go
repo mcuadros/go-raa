@@ -1,8 +1,11 @@
 package benchmark
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
+
+	"github.com/mcuadros/boltfs"
 
 	. "gopkg.in/check.v1"
 )
@@ -59,5 +62,28 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_1k(c *C) {
 func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6k(c *C) {
 	for i := 0; i < c.N; i++ {
 		openDbAndReadFile(6133, files6133)
+	}
+}
+
+func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
+	v, err := boltfs.NewVolume(fmt.Sprintf(FixtureDbParttern, 6133))
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < c.N; i++ {
+		randomFile := files6133[rand.Intn(len(files6133))]
+
+		r := v.Find(func(name string) bool {
+			if name == randomFile {
+				return true
+			}
+
+			return false
+		})
+
+		if len(r) != 0 {
+			panic("not found")
+		}
 	}
 }

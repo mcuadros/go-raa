@@ -56,7 +56,10 @@ func (s *FSSuite) TestFile_WriteInSynced(c *C) {
 	r, _ := s.v.OpenFile("foo", os.O_RDONLY, 0)
 	c.Assert(r.buf.String(), Equals, "foo")
 
-	f.WriteString("bar")
+	n, err := f.WriteString("bar")
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 3)
+
 	r, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
 	c.Assert(r.buf.String(), Equals, "foobar")
 }

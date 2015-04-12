@@ -2,6 +2,7 @@ package boltfs
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"errors"
 	"io"
@@ -17,13 +18,12 @@ type Volume struct {
 }
 
 var (
-	rootBucket  = []byte("root")
-	inodeSuffix = []byte("|inode")
+	rootBucket = []byte("root")
 
-	stopError           = errors.New("stop")
-	foundError          = errors.New("file already exist")
-	notFoundError       = errors.New("no such file or directory")
-	unableToReadContent = errors.New("unable to read the file content")
+	stopError          = errors.New("stop")
+	foundError         = errors.New("file already exist")
+	notFoundError      = errors.New("no such file or directory")
+	unableToReadHeader = errors.New("unable to read the file header")
 )
 
 //NewVolume create or open a Volume
@@ -195,11 +195,12 @@ func (v *Volume) readFile(f *File, name []byte) error {
 			return notFoundError
 		}
 
-		if err := v.readFileInode(b, f, name); err != nil {
+		buf := bytes.NewBuffer(b.Get(name))
+		if err := v.readFileInode(b, f, buf); err != nil {
 			return err
 		}
 
-		if err := v.readFileContent(b, f, name); err != nil {
+		if err := v.readFileContent(b, f, buf); err != nil {
 			return err
 		}
 
@@ -207,25 +208,33 @@ func (v *Volume) readFile(f *File, name []byte) error {
 	})
 }
 
-func (v *Volume) readFileInode(b *bolt.Bucket, f *File, name []byte) error {
-	buf := bytes.NewBuffer(nil)
-	buf.Write(b.Get(append(name, inodeSuffix...)))
-	if buf.Len() == 0 {
-		return notFoundError
-	}
+func (v *Volume) readFileInode(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
+	var length int64
+	if err := binary.Read(c, binary.LittleEndian, &length); err != nil {
+		if err == io.EOF {
+			return notFoundError
+		}
 
-	dec := gob.NewDecoder(buf)
-	return dec.Decode(&f.inode)
-}
-
-func (v *Volume) readFileContent(b *bolt.Bucket, f *File, name []byte) error {
-	n, err := f.buf.Write(b.Get(name))
-	if err != nil {
 		return err
 	}
 
-	if int64(n) != f.inode.Size {
-		return unableToReadContent
+	header := make([]byte, length)
+	n, err := c.Read(header)
+	if err != nil && err != io.EOF {
+		return err
+	}
+
+	if int64(n) != length {
+		return unableToReadHeader
+	}
+
+	dec := gob.NewDecoder(bytes.NewBuffer(header))
+	return dec.Decode(&f.inode)
+}
+
+func (v *Volume) readFileContent(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
+	if _, err := io.Copy(f.buf, c); err != nil {
+		return err
 	}
 
 	return nil
@@ -270,10 +279,6 @@ func (v *Volume) Find(matcher func(string) bool) []string {
 		c := b.Cursor()
 
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
-			if bytes.HasSuffix(k, inodeSuffix) {
-				continue
-			}
-
 			name := string(k)
 			if matcher(name) {
 				r = append(r, name)
@@ -299,11 +304,16 @@ func (v *Volume) writeFile(f *File) error {
 		}
 
 		name := []byte(f.inode.Name)
-		if v.writeFileInode(b, f, name); err != nil {
+		buf := bytes.NewBuffer(nil)
+		if v.writeFileInode(b, f, buf); err != nil {
 			return err
 		}
 
-		if v.writeFileContent(b, f, name); err != nil {
+		if v.writeFileContent(b, f, buf); err != nil {
+			return err
+		}
+
+		if err = b.Put(name, buf.Bytes()); err != nil {
 			return err
 		}
 
@@ -311,22 +321,26 @@ func (v *Volume) writeFile(f *File) error {
 	})
 }
 
-func (v *Volume) writeFileInode(b *bolt.Bucket, f *File, name []byte) error {
+func (v *Volume) writeFileInode(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
 	buf := bytes.NewBuffer(nil)
 	enc := gob.NewEncoder(buf)
 	if err := enc.Encode(f.inode); err != nil {
 		return err
 	}
 
-	if err := b.Put(append(name, inodeSuffix...), buf.Bytes()); err != nil {
+	if err := binary.Write(c, binary.LittleEndian, int64(buf.Len())); err != nil {
+		return err
+	}
+
+	if _, err := buf.WriteTo(c); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (v *Volume) writeFileContent(b *bolt.Bucket, f *File, name []byte) error {
-	if err := b.Put(name, f.buf.Bytes()); err != nil {
+func (v *Volume) writeFileContent(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
+	if _, err := c.Write(f.buf.Bytes()); err != nil {
 		return err
 	}
 

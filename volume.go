@@ -49,8 +49,30 @@ func (v *Volume) Chdir(dir string) error {
 	return nil
 }
 
-//func Chmod(name string, mode FileMode) error
-//func Chown(name string, uid, gid int) error
+// Chmod changes the mode of the file to mode.
+// If there is an error, it will be of type *PathError.
+func (v *Volume) Chmod(name string, mode os.FileMode) error {
+	f, err := v.Open(name)
+	if err != nil {
+		return err
+	}
+
+	f.Chmod(mode)
+	return f.Close()
+}
+
+// Chown changes the numeric uid and gid of the named file.
+// If there is an error, it will be of type *PathError.
+func (v *Volume) Chown(name string, uid, gid int) error {
+	f, err := v.Open(name)
+	if err != nil {
+		return err
+	}
+
+	f.Chown(uid, gid)
+	return f.Close()
+}
+
 //func Chtimes(name string, atime time.Time, mtime time.Time) error
 
 // Getwd returns a rooted path name corresponding to the
@@ -150,8 +172,18 @@ func (v *Volume) Rename(oldpath, newpath string) error {
 
 //func SameFile(fi1, fi2 FileInfo) bool
 //func Symlink(oldname, newname string) error
-//func Truncate(name string, size int64) error
-//func Create(name string) (file *File, err error)
+
+// Truncate changes the size of the named file.
+// If there is an error, it will be of type *PathError.
+func (v *Volume) Truncate(name string, size int64) error {
+	f, err := v.Open(name)
+	if err != nil {
+		return err
+	}
+
+	f.Truncate(size)
+	return f.Close()
+}
 
 // OpenFile is the generalized open call; most users will use Open
 // or Create instead.  It opens the named file with specified flag

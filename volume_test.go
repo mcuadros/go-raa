@@ -57,6 +57,36 @@ func (s *FSSuite) TestVolume_ChdirAndGetcwd(c *C) {
 	c.Assert(path, Equals, "/bar")
 }
 
+func (s *FSSuite) TestVolume_Chmod(c *C) {
+	f, _ := s.v.Create("foo")
+	f.WriteString("foo")
+	f.Close()
+
+	c.Assert(int(f.inode.Mode), Equals, 0666)
+
+	err := s.v.Chmod("/foo", 0042)
+	c.Assert(err, IsNil)
+
+	f, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
+	c.Assert(int(f.inode.Mode), Equals, 0042)
+}
+
+func (s *FSSuite) TestVolume_Chown(c *C) {
+	f, _ := s.v.Create("foo")
+	f.WriteString("foo")
+	f.Close()
+
+	c.Assert(f.inode.UserId, Equals, os.Getuid())
+	c.Assert(f.inode.GroupId, Equals, os.Getgid())
+
+	err := s.v.Chown("/foo", 42, 84)
+	c.Assert(err, IsNil)
+
+	f, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
+	c.Assert(f.inode.UserId, Equals, 42)
+	c.Assert(f.inode.GroupId, Equals, 84)
+}
+
 func (s *FSSuite) TestVolume_Rename(c *C) {
 	f, _ := s.v.Create("foo")
 	f.WriteString("foo")
@@ -83,6 +113,18 @@ func (s *FSSuite) TestVolume_RenameExists(c *C) {
 
 	err := s.v.Rename("/foo", "/bar")
 	c.Assert(err, Not(IsNil))
+}
+
+func (s *FSSuite) TestVolume_Truncate(c *C) {
+	f, _ := s.v.Create("foo")
+	f.WriteString("foo")
+	f.Close()
+
+	err := s.v.Truncate("/foo", 1)
+	c.Assert(err, IsNil)
+
+	f, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
+	c.Assert(f.buf.Len(), Equals, 1)
 }
 
 func (s *FSSuite) TestVolume_Open(c *C) {

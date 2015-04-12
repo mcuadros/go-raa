@@ -32,6 +32,8 @@ func newFile(v *Volume, name string, flag int, mode os.FileMode) *File {
 		inode: Inode{
 			Name:         name,
 			Mode:         mode,
+			UserId:       os.Getuid(),
+			GroupId:      os.Getgid(),
 			ModifcatedAt: time.Now(),
 			CreatedAt:    time.Now(),
 		},

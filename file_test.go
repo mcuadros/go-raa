@@ -9,6 +9,37 @@ import (
 
 const longFile = "benchmark/fixtures/6133_files.tar"
 
+func (s *FSSuite) TestNewFile(c *C) {
+	f := newFile(nil, "foo", os.O_WRONLY, 0042)
+	c.Assert(f.inode.Name, Equals, "foo")
+	c.Assert(f.flag, Equals, os.O_WRONLY)
+	c.Assert(int(f.inode.Mode), Equals, 0042)
+	c.Assert(f.inode.UserId, Equals, os.Getuid())
+	c.Assert(f.inode.GroupId, Equals, os.Getgid())
+	c.Assert(f.inode.CreatedAt.Unix(), Not(Equals), 0)
+	c.Assert(f.inode.CreatedAt.Unix(), Equals, f.inode.ModifcatedAt.Unix())
+	c.Assert(f.buf.Len(), Equals, 0)
+
+	c.Assert(f.isReadable, Equals, false)
+	c.Assert(f.isWritable, Equals, true)
+	c.Assert(f.isSync, Equals, false)
+
+	f = newFile(nil, "foo", os.O_RDWR, 0042)
+	c.Assert(f.isReadable, Equals, true)
+	c.Assert(f.isWritable, Equals, true)
+	c.Assert(f.isSync, Equals, false)
+
+	f = newFile(nil, "foo", os.O_RDONLY, 0042)
+	c.Assert(f.isReadable, Equals, true)
+	c.Assert(f.isWritable, Equals, false)
+	c.Assert(f.isSync, Equals, false)
+
+	f = newFile(nil, "foo", os.O_SYNC, 0042)
+	c.Assert(f.isReadable, Equals, true)
+	c.Assert(f.isWritable, Equals, false)
+	c.Assert(f.isSync, Equals, true)
+}
+
 func (s *FSSuite) TestFile_Chdir(c *C) {
 	f, _ := s.v.Create("foo")
 	err := f.Chdir()

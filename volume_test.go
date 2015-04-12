@@ -122,7 +122,7 @@ func (s *FSSuite) TestVolume_Create(c *C) {
 	f, err = s.v.Create("foo")
 	c.Assert(err, IsNil)
 	c.Assert(f.Name(), Equals, "/foo")
-	c.Assert(f.hdr.Size, Equals, int64(0))
+	c.Assert(f.inode.Size, Equals, int64(0))
 	c.Assert(f.buf.Len(), Equals, 0)
 }
 

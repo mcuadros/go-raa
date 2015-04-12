@@ -1,8 +1,8 @@
 package boltfs
 
 import (
-	"archive/tar"
 	"bytes"
+	"encoding/gob"
 	"errors"
 	"io"
 	"os"
@@ -16,11 +16,14 @@ type Volume struct {
 	db   *bolt.DB
 }
 
-var rootBucket = []byte("root")
 var (
-	stopError     = errors.New("stop")
-	foundError    = errors.New("file already exist")
-	notFoundError = errors.New("no such file or directory")
+	rootBucket  = []byte("root")
+	inodeSuffix = []byte("|inode")
+
+	stopError           = errors.New("stop")
+	foundError          = errors.New("file already exist")
+	notFoundError       = errors.New("no such file or directory")
+	unableToReadContent = errors.New("unable to read the file content")
 )
 
 //NewVolume create or open a Volume
@@ -133,7 +136,7 @@ func (v *Volume) Rename(oldpath, newpath string) error {
 		return err
 	}
 
-	dst, err := v.OpenFile(newpath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, src.hdr.FileInfo().Mode())
+	dst, err := v.OpenFile(newpath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, src.inode.Mode)
 	if err != nil {
 		return err
 	}
@@ -165,7 +168,7 @@ func (v *Volume) OpenFile(name string, flag int, perm os.FileMode) (file *File, 
 		return f, nil
 	}
 
-	if err := v.readFile(f, fname); err != nil {
+	if err := v.readFile(f, []byte(fname)); err != nil {
 		switch err {
 		case notFoundError:
 			if flag&os.O_CREATE != 0 {
@@ -185,37 +188,47 @@ func (v *Volume) OpenFile(name string, flag int, perm os.FileMode) (file *File, 
 	return f, nil
 }
 
-func (v *Volume) readFile(f *File, name string) error {
+func (v *Volume) readFile(f *File, name []byte) error {
 	return v.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(rootBucket)
 		if b == nil {
 			return notFoundError
 		}
 
-		buf := bytes.NewBuffer(nil)
-		buf.Write(b.Get([]byte(name)))
-
-		if buf.Len() == 0 {
-			return notFoundError
-		}
-
-		r := tar.NewReader(buf)
-		hdr, err := r.Next()
-		if hdr == nil {
-			return nil
-		}
-
-		if err != nil {
+		if err := v.readFileInode(b, f, name); err != nil {
 			return err
 		}
 
-		f.hdr = *hdr
-		if _, err := io.Copy(f.buf, r); err != nil {
+		if err := v.readFileContent(b, f, name); err != nil {
 			return err
 		}
 
 		return foundError
 	})
+}
+
+func (v *Volume) readFileInode(b *bolt.Bucket, f *File, name []byte) error {
+	buf := bytes.NewBuffer(nil)
+	buf.Write(b.Get(append(name, inodeSuffix...)))
+	if buf.Len() == 0 {
+		return notFoundError
+	}
+
+	dec := gob.NewDecoder(buf)
+	return dec.Decode(&f.inode)
+}
+
+func (v *Volume) readFileContent(b *bolt.Bucket, f *File, name []byte) error {
+	n, err := f.buf.Write(b.Get(name))
+	if err != nil {
+		return err
+	}
+
+	if int64(n) != f.inode.Size {
+		return unableToReadContent
+	}
+
+	return nil
 }
 
 // Open opens the named file for reading.  If successful, methods on
@@ -257,8 +270,11 @@ func (v *Volume) Find(matcher func(string) bool) []string {
 		c := b.Cursor()
 
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
-			name := string(k)
+			if bytes.HasSuffix(k, inodeSuffix) {
+				continue
+			}
 
+			name := string(k)
 			if matcher(name) {
 				r = append(r, name)
 			}
@@ -282,14 +298,12 @@ func (v *Volume) writeFile(f *File) error {
 			return err
 		}
 
-		content, err := v.getHeaderBytes(f)
-		if err != nil {
+		name := []byte(f.inode.Name)
+		if v.writeFileInode(b, f, name); err != nil {
 			return err
 		}
 
-		content = append(content, f.buf.Bytes()...)
-
-		if err = b.Put([]byte(f.Name()), content); err != nil {
+		if v.writeFileContent(b, f, name); err != nil {
 			return err
 		}
 
@@ -297,14 +311,26 @@ func (v *Volume) writeFile(f *File) error {
 	})
 }
 
-func (v *Volume) getHeaderBytes(f *File) ([]byte, error) {
-	b := bytes.NewBuffer(nil)
-	w := tar.NewWriter(b)
-	if err := w.WriteHeader(&f.hdr); err != nil {
-		return nil, err
+func (v *Volume) writeFileInode(b *bolt.Bucket, f *File, name []byte) error {
+	buf := bytes.NewBuffer(nil)
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(f.inode); err != nil {
+		return err
 	}
 
-	return b.Bytes(), nil
+	if err := b.Put(append(name, inodeSuffix...), buf.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (v *Volume) writeFileContent(b *bolt.Bucket, f *File, name []byte) error {
+	if err := b.Put(name, f.buf.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (v *Volume) getFullpath(name string) string {

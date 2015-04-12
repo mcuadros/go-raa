@@ -31,7 +31,7 @@ func (s *FSSuite) TestFile_Write(c *C) {
 
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 3)
-	c.Assert(f.hdr.Size, Equals, int64(3))
+	c.Assert(f.inode.Size, Equals, int64(3))
 }
 
 func (s *FSSuite) TestFile_WriteInClosed(c *C) {
@@ -67,7 +67,7 @@ func (s *FSSuite) TestFile_WriteString(c *C) {
 
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 3)
-	c.Assert(f.hdr.Size, Equals, int64(3))
+	c.Assert(f.inode.Size, Equals, int64(3))
 }
 
 func (s *FSSuite) TestFile_WriteLongFile(c *C) {
@@ -89,7 +89,7 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 
 	fsFile, err = s.v.Open("foo")
 	c.Assert(err, IsNil)
-	c.Assert(fsFile.hdr.Size, Equals, int64(26334208))
+	c.Assert(fsFile.inode.Size, Equals, int64(26334208))
 	c.Assert(fsFile.buf.Len(), Equals, 26334208)
 }
 

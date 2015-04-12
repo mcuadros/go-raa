@@ -167,6 +167,16 @@ func (f *File) WriteString(s string) (int, error) {
 	return f.Write([]byte(s))
 }
 
+// Bytes returns a slice of the contents of the unread portion of the file
+func (f *File) Bytes() []byte {
+	return f.buf.Bytes()
+}
+
+// String returns the contents of the unread portion of the files as a string
+func (f *File) String() string {
+	return f.buf.String()
+}
+
 func isWritable(flag int) bool {
 	if flag&os.O_WRONLY != 0 || flag&os.O_RDWR != 0 {
 		return true

@@ -75,7 +75,7 @@ func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
 		randomFile := files6133[rand.Intn(len(files6133))]
 
 		r := v.Find(func(name string) bool {
-			if name == randomFile {
+			if name == randomFile[1:] {
 				return true
 			}
 

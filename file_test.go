@@ -7,7 +7,8 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-const longFile = "benchmark/fixtures/6133_files.tar"
+const bigFileTar = "benchmark/fixtures/6133_files.tar"
+const smallFileTar = "benchmark/fixtures/78_files.tar"
 
 func (s *FSSuite) TestNewFile(c *C) {
 	f := newFile(nil, "foo", os.O_WRONLY, 0042)
@@ -105,7 +106,7 @@ func (s *FSSuite) TestFile_WriteString(c *C) {
 }
 
 func (s *FSSuite) TestFile_WriteLongFile(c *C) {
-	osFile, err := os.Open(longFile)
+	osFile, err := os.Open(bigFileTar)
 	if err != nil {
 		panic(err)
 	}

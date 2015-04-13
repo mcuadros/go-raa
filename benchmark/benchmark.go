@@ -12,47 +12,21 @@ import (
 )
 
 const FixtureTarPattern = "fixtures/%d_files.tar"
-const FixtureDbParttern = "fixtures/%d_files.db"
+const FixtureDbParttern = "fixtures/%d_files.raa"
 
-func buildVolumeFromTar(files int) []string {
-	result := make([]string, 0)
+func buildVolumeFromTar(numFiles int) []string {
+	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, numFiles))
+	ifErrPanic(err)
+	defer file.Close()
 
-	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, files))
-	if err != nil {
-		panic(err)
-	}
+	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, numFiles))
+	ifErrPanic(err)
+	defer v.Close()
 
-	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
-	if err != nil {
-		panic(err)
-	}
+	_, err = raa.AddTarContent(v, file, "/")
+	ifErrPanic(err)
 
-	tar := tar.NewReader(file)
-	cur := 0
-	for {
-		hdr, err := tar.Next()
-		if err == io.EOF {
-			break
-		}
-
-		ifErrPanic(err)
-
-		file, err := v.Create(hdr.Name)
-		ifErrPanic(err)
-
-		_, err = io.Copy(file, tar)
-		ifErrPanic(err)
-		file.Close()
-
-		if !hdr.FileInfo().IsDir() {
-			result = append(result, hdr.Name)
-		}
-
-		cur++
-	}
-
-	v.Close()
-	return result
+	return v.Find(func(string) bool { return true })
 }
 
 func openDbAndReadFile(files int, names []string) {
@@ -75,8 +49,6 @@ func openDbAndReadFile(files int, names []string) {
 	if s.Size() != n {
 		panic("ws")
 	}
-
-	//ifErrPanic(err)
 
 	v.Close()
 }
@@ -101,8 +73,7 @@ func openTarAndReadFile(files int, names []string) {
 		_, err = io.Copy(buf, tar)
 		ifErrPanic(err)
 
-		if hdr.Name == randomFile {
-			//fmt.Printf("Contents of %s:\n", hdr.Name)
+		if hdr.Name == randomFile[1:] {
 			found = true
 			break
 		}

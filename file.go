@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const DefaultBlockSize int32 = 10485760
+
 var (
 	NotDirectoryErr = errors.New("not a directory")
 	ClosedFileErr   = errors.New("cannot read/write on a closed file")
@@ -32,6 +34,7 @@ func newFile(v *Volume, name string, flag int, mode os.FileMode) *File {
 	return &File{
 		name: name,
 		inode: Inode{
+			BlockSize:    DefaultBlockSize,
 			Mode:         mode,
 			UserId:       uint64(os.Getuid()),
 			GroupId:      uint64(os.Getgid()),

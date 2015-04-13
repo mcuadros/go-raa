@@ -3,6 +3,7 @@ package raa
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -298,6 +299,8 @@ func (v *Volume) Close() error {
 	return v.db.Close()
 }
 
+const BlockFilePattern = "|block.%d"
+
 func (v *Volume) writeFile(f *File) error {
 	return v.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(rootBucket)
@@ -305,22 +308,43 @@ func (v *Volume) writeFile(f *File) error {
 			return err
 		}
 
-		name := []byte(f.name)
 		buf := bytes.NewBuffer(nil)
 		if err := f.inode.Write(buf); err != nil {
 			return err
 		}
 
-		if _, err := buf.Write(f.buf.Bytes()); err != nil {
-			return err
-		}
-
-		if err = b.Put(name, buf.Bytes()); err != nil {
+		if err = v.writeFileBlocks(b, f, buf); err != nil {
 			return err
 		}
 
 		return nil
 	})
+}
+
+func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File, buf *bytes.Buffer) error {
+	filename := []byte(f.name)
+	name := filename
+	current := 0
+	next := true
+	for next {
+		if _, err := io.CopyN(buf, f.buf, int64(f.inode.BlockSize)); err != nil {
+			if err == io.EOF {
+				next = false
+			} else {
+				return err
+			}
+		}
+
+		if err := b.Put(name, buf.Bytes()); err != nil {
+			return err
+		}
+
+		current++
+		name = append(filename, []byte(fmt.Sprintf(BlockFilePattern, current))...)
+		buf.Truncate(0)
+	}
+
+	return nil
 }
 
 func (v *Volume) getFullpath(name string) string {

@@ -10,7 +10,10 @@ import (
 	"time"
 )
 
-var InodeSignature = []byte{'R', 'A', 'A'}
+var (
+	InodeSignature      = []byte{'R', 'A', 'A'}
+	WrongInodeSignature = errors.New("Wrong Inode signature")
+)
 
 const (
 	InodeVersion int32 = 1
@@ -27,6 +30,8 @@ type Inode struct {
 	CreatedAt    time.Time
 }
 
+// Write writes the byte representation of Inode
+//
 // Inode byte representation on LittleEndian have the following format:
 // - 4-byte signature: The signature is: {'R', 'A', 'A'}
 // - 4-byte lenght of the header, not includes the signature len
@@ -38,7 +43,6 @@ type Inode struct {
 // - 8-byte file size
 // - 8-byte modification timestamp
 // - 8-byte creation timestamp
-
 func (i *Inode) Write(w io.Writer) error {
 	if _, err := w.Write(InodeSignature); err != nil {
 		return err
@@ -65,10 +69,7 @@ func (i *Inode) Write(w io.Writer) error {
 	return nil
 }
 
-var (
-	WrongInodeSignature = errors.New("Wrong Inode signature")
-)
-
+// Read reads from a reader the byte representation of Inode and fills up the Inode
 func (i *Inode) Read(r io.Reader) error {
 	sig := make([]byte, 3)
 	if _, err := r.Read(sig); err != nil {

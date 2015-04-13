@@ -156,7 +156,7 @@ func (s *FSSuite) TestFile_ReadInNonReadable(c *C) {
 }
 
 func (s *FSSuite) TestFile_Close(c *C) {
-	v, err := NewVolume(TestDBFile)
+	v, err := NewVolume(TestRAAFile)
 	if err != nil {
 		panic(err)
 	}

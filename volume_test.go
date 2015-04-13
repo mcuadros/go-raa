@@ -19,7 +19,7 @@ type FSSuite struct {
 
 var _ = Suite(&FSSuite{})
 
-const TestDBFile = "foo.db"
+const TestRAAFile = "foo.raa"
 
 func (s *FSSuite) SetUpTest(c *C) {
 	tempDir, err := ioutil.TempDir("/tmp", "raa")
@@ -27,7 +27,7 @@ func (s *FSSuite) SetUpTest(c *C) {
 		panic(err)
 	}
 
-	s.file = filepath.Join(tempDir, TestDBFile)
+	s.file = filepath.Join(tempDir, TestRAAFile)
 
 	s.v, err = NewVolume(s.file)
 	if err != nil {

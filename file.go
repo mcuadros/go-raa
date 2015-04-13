@@ -16,6 +16,7 @@ var (
 )
 
 type File struct {
+	name  string
 	inode Inode
 	flag  int
 	buf   *bytes.Buffer
@@ -29,11 +30,11 @@ type File struct {
 
 func newFile(v *Volume, name string, flag int, mode os.FileMode) *File {
 	return &File{
+		name: name,
 		inode: Inode{
-			Name:         name,
 			Mode:         mode,
-			UserId:       os.Getuid(),
-			GroupId:      os.Getgid(),
+			UserId:       uint64(os.Getuid()),
+			GroupId:      uint64(os.Getgid()),
 			ModifcatedAt: time.Now(),
 			CreatedAt:    time.Now(),
 		},
@@ -52,10 +53,10 @@ func newFile(v *Volume, name string, flag int, mode os.FileMode) *File {
 // If there is an error, it will be of type *PathError.
 func (f *File) Chdir() error {
 	if true {
-		return &os.PathError{"chdir", f.inode.Name, NotDirectoryErr}
+		return &os.PathError{"chdir", f.name, NotDirectoryErr}
 	}
 
-	return f.v.Chdir(f.inode.Name)
+	return f.v.Chdir(f.name)
 }
 
 // Chmod changes the mode of the file to mode.
@@ -67,8 +68,8 @@ func (f *File) Chmod(mode os.FileMode) error {
 
 // Chown changes the numeric uid and gid of the named file.
 func (f *File) Chown(uid, gid int) error {
-	f.inode.UserId = uid
-	f.inode.GroupId = gid
+	f.inode.UserId = uint64(uid)
+	f.inode.GroupId = uint64(gid)
 
 	return nil
 }
@@ -84,17 +85,17 @@ func (f *File) Close() error {
 
 // Name returns the name of the file as presented to Open.
 func (f *File) Name() string {
-	return f.inode.Name
+	return f.name
 }
 
 // Read reads up to len(b) bytes from the File.
 func (f *File) Read(b []byte) (int, error) {
 	if f.isClosed {
-		return 0, &os.PathError{"read", f.inode.Name, ClosedFileErr}
+		return 0, &os.PathError{"read", f.name, ClosedFileErr}
 	}
 
 	if !f.isReadable {
-		return 0, &os.PathError{"read", f.inode.Name, NonReadableErr}
+		return 0, &os.PathError{"read", f.name, NonReadableErr}
 	}
 
 	n, err := f.buf.Read(b)
@@ -102,7 +103,7 @@ func (f *File) Read(b []byte) (int, error) {
 		return n, err
 	}
 
-	return n, &os.PathError{"read", f.inode.Name, err}
+	return n, &os.PathError{"read", f.name, err}
 }
 
 //func (f *File) ReadAt(b []byte, off int64) (n int, err error)
@@ -112,7 +113,7 @@ func (f *File) Read(b []byte) (int, error) {
 
 // Stat returns a FileInfo describing the named file.
 func (f *File) Stat() (os.FileInfo, error) {
-	return &FileInfo{f.inode}, nil
+	return &FileInfo{f.name, f.inode}, nil
 }
 
 // Sync commits the current contents of the file to stable storage.
@@ -132,18 +133,18 @@ func (f *File) Truncate(size int64) error {
 // Write returns a non-nil error when n != len(b).
 func (f *File) Write(b []byte) (int, error) {
 	if f.isClosed {
-		return 0, &os.PathError{"read", f.inode.Name, ClosedFileErr}
+		return 0, &os.PathError{"read", f.name, ClosedFileErr}
 	}
 
 	if !f.isWritable {
-		return 0, &os.PathError{"read", f.inode.Name, NonWritableErr}
+		return 0, &os.PathError{"read", f.name, NonWritableErr}
 	}
 
 	n, err := f.buf.Write(b)
 	f.inode.Size += int64(n)
 
 	if err != nil {
-		err = &os.PathError{"write", f.inode.Name, err}
+		err = &os.PathError{"write", f.name, err}
 	}
 
 	if n != len(b) {

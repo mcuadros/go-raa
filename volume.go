@@ -2,8 +2,6 @@ package raa
 
 import (
 	"bytes"
-	"encoding/binary"
-	"encoding/gob"
 	"errors"
 	"io"
 	"os"
@@ -228,48 +226,20 @@ func (v *Volume) readFile(f *File, name []byte) error {
 		}
 
 		buf := bytes.NewBuffer(b.Get(name))
-		if err := v.readFileInode(b, f, buf); err != nil {
+		if err := f.inode.Read(buf); err != nil {
+			if err == io.EOF {
+				return notFoundError
+			}
+
 			return err
 		}
 
-		if err := v.readFileContent(b, f, buf); err != nil {
+		if _, err := io.Copy(f.buf, buf); err != nil {
 			return err
 		}
 
 		return foundError
 	})
-}
-
-func (v *Volume) readFileInode(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
-	var length int64
-	if err := binary.Read(c, binary.LittleEndian, &length); err != nil {
-		if err == io.EOF {
-			return notFoundError
-		}
-
-		return err
-	}
-
-	header := make([]byte, length)
-	n, err := c.Read(header)
-	if err != nil && err != io.EOF {
-		return err
-	}
-
-	if int64(n) != length {
-		return unableToReadHeader
-	}
-
-	dec := gob.NewDecoder(bytes.NewBuffer(header))
-	return dec.Decode(&f.inode)
-}
-
-func (v *Volume) readFileContent(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
-	if _, err := io.Copy(f.buf, c); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Open opens the named file for reading.  If successful, methods on
@@ -335,13 +305,13 @@ func (v *Volume) writeFile(f *File) error {
 			return err
 		}
 
-		name := []byte(f.inode.Name)
+		name := []byte(f.name)
 		buf := bytes.NewBuffer(nil)
-		if v.writeFileInode(b, f, buf); err != nil {
+		if err := f.inode.Write(buf); err != nil {
 			return err
 		}
 
-		if v.writeFileContent(b, f, buf); err != nil {
+		if _, err := buf.Write(f.buf.Bytes()); err != nil {
 			return err
 		}
 
@@ -351,32 +321,6 @@ func (v *Volume) writeFile(f *File) error {
 
 		return nil
 	})
-}
-
-func (v *Volume) writeFileInode(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
-	buf := bytes.NewBuffer(nil)
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(f.inode); err != nil {
-		return err
-	}
-
-	if err := binary.Write(c, binary.LittleEndian, int64(buf.Len())); err != nil {
-		return err
-	}
-
-	if _, err := buf.WriteTo(c); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (v *Volume) writeFileContent(b *bolt.Bucket, f *File, c *bytes.Buffer) error {
-	if _, err := c.Write(f.buf.Bytes()); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (v *Volume) getFullpath(name string) string {

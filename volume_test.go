@@ -76,15 +76,15 @@ func (s *FSSuite) TestVolume_Chown(c *C) {
 	f.WriteString("foo")
 	f.Close()
 
-	c.Assert(f.inode.UserId, Equals, os.Getuid())
-	c.Assert(f.inode.GroupId, Equals, os.Getgid())
+	c.Assert(f.inode.UserId, Equals, uint64(os.Getuid()))
+	c.Assert(f.inode.GroupId, Equals, uint64(os.Getgid()))
 
 	err := s.v.Chown("/foo", 42, 84)
 	c.Assert(err, IsNil)
 
 	f, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
-	c.Assert(f.inode.UserId, Equals, 42)
-	c.Assert(f.inode.GroupId, Equals, 84)
+	c.Assert(f.inode.UserId, Equals, uint64(42))
+	c.Assert(f.inode.GroupId, Equals, uint64(84))
 }
 
 func (s *FSSuite) TestVolume_Rename(c *C) {

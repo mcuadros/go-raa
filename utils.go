@@ -94,13 +94,7 @@ func AddTarContent(v *Volume, file io.Reader, to string) (int, error) {
 
 		switch hdr.Typeflag {
 		case tar.TypeReg:
-			file, err := createFileFromTarHeader(v, hdr, to)
-			defer file.Close()
-			if err != nil {
-				return count, err
-			}
-
-			if _, err = io.Copy(file, reader); err != nil {
+			if err := readFileFromTar(v, reader, hdr, to); err != nil {
 				return count, err
 			}
 
@@ -109,6 +103,20 @@ func AddTarContent(v *Volume, file io.Reader, to string) (int, error) {
 	}
 
 	return count, nil
+}
+
+func readFileFromTar(v *Volume, reader *tar.Reader, h *tar.Header, to string) error {
+	file, err := createFileFromTarHeader(v, h, to)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+
+	if _, err = io.Copy(file, reader); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func createFileFromTarHeader(v *Volume, h *tar.Header, to string) (*File, error) {

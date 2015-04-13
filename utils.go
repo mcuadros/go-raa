@@ -1,6 +1,7 @@
 package raa
 
 import (
+	"archive/tar"
 	"io"
 	"os"
 	"path/filepath"
@@ -74,4 +75,50 @@ func AddGlob(v *Volume, pattern, to string, recursive bool) (int, error) {
 	}
 
 	return count, nil
+}
+
+// AddTarContent add the contained files in a tar stream to the volume, returns
+// the number of files copied to the Volume
+func AddTarContent(v *Volume, file io.Reader, to string) (int, error) {
+	reader := tar.NewReader(file)
+	count := 0
+	for {
+		hdr, err := reader.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			return count, err
+		}
+
+		switch hdr.Typeflag {
+		case tar.TypeReg:
+			file, err := createFileFromTarHeader(v, hdr, to)
+			defer file.Close()
+			if err != nil {
+				return count, err
+			}
+
+			if _, err = io.Copy(file, reader); err != nil {
+				return count, err
+			}
+
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+func createFileFromTarHeader(v *Volume, h *tar.Header, to string) (*File, error) {
+	file, err := v.Create(filepath.Join(to, h.Name))
+	if err != nil {
+		return nil, err
+	}
+
+	file.Chown(h.Uid, h.Gid)
+	file.Chmod(os.FileMode(h.Mode))
+
+	return file, nil
 }

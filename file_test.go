@@ -2,6 +2,7 @@ package raa
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 
 	. "gopkg.in/check.v1"
@@ -14,6 +15,7 @@ func (s *FSSuite) TestNewFile(c *C) {
 	f := newFile(nil, "foo", os.O_WRONLY, 0042)
 	c.Assert(f.name, Equals, "foo")
 	c.Assert(f.flag, Equals, os.O_WRONLY)
+	c.Assert(f.inode.BlockSize, Equals, DefaultBlockSize)
 	c.Assert(int(f.inode.Mode), Equals, 0042)
 	c.Assert(f.inode.UserId, Equals, uint64(os.Getuid()))
 	c.Assert(f.inode.GroupId, Equals, uint64(os.Getgid()))
@@ -126,6 +128,11 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(fsFile.inode.Size, Equals, int64(26334208))
 	c.Assert(fsFile.buf.Len(), Equals, 26334208)
+
+	osFile.Seek(0, 0)
+	content, err := ioutil.ReadAll(osFile)
+	c.Assert(err, IsNil)
+	c.Assert(fsFile.Bytes(), DeepEquals, content)
 }
 
 func (s *FSSuite) TestFile_Read(c *C) {
@@ -156,14 +163,7 @@ func (s *FSSuite) TestFile_ReadInNonReadable(c *C) {
 }
 
 func (s *FSSuite) TestFile_Close(c *C) {
-	v, err := NewVolume(TestRAAFile)
-	if err != nil {
-		panic(err)
-	}
-
-	defer v.Close()
-
-	f, err := v.Create("foo")
+	f, err := s.v.Create("foo")
 	c.Assert(err, IsNil)
 
 	err = f.Close()

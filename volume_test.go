@@ -173,9 +173,14 @@ func (s *FSSuite) TestVolume_Stat(c *C) {
 	f.WriteString("foo")
 	f.Close()
 
-	st, err := s.v.Stat("/foo")
+	fi, err := s.v.Stat("/foo")
 	c.Assert(err, IsNil)
-	c.Assert(st.Name(), Equals, "foo")
+	c.Assert(fi.Name(), Equals, "foo")
+}
+
+func (s *FSSuite) TestVolume_Stat_NotFound(c *C) {
+	_, err := s.v.Stat("/foo")
+	c.Assert(err, FitsTypeOf, &os.PathError{})
 }
 
 func (s *FSSuite) TestVolume_Remove(c *C) {

@@ -17,11 +17,12 @@ var (
 
 const (
 	InodeVersion int32 = 1
-	InodeLength  int32 = 60
+	InodeLength  int32 = 64
 )
 
 type Inode struct {
 	Id           uint64
+	BlockSize    int32
 	Mode         os.FileMode
 	UserId       uint64
 	GroupId      uint64
@@ -37,6 +38,7 @@ type Inode struct {
 // - 4-byte lenght of the header, not includes the signature len
 // - 4-byte version number
 // - 8-byte inode id
+// - 4-byte block size
 // - 4-byte file mode
 // - 8-byte user id
 // - 8-byte group id
@@ -52,6 +54,7 @@ func (i *Inode) Write(w io.Writer) error {
 		InodeLength,
 		InodeVersion,
 		i.Id,
+		i.BlockSize,
 		i.Mode,
 		i.UserId,
 		i.GroupId,
@@ -91,6 +94,10 @@ func (i *Inode) Read(r io.Reader) error {
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &i.Id); err != nil {
+		return err
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &i.BlockSize); err != nil {
 		return err
 	}
 

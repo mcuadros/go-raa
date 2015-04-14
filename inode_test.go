@@ -11,10 +11,11 @@ func (s *FSSuite) TestInode_WriteRead(c *C) {
 	buf := bytes.NewBuffer(nil)
 	i := &Inode{
 		Id:           42,
+		BlockSize:    42 * 2,
 		Mode:         0042,
-		UserId:       42 * 2,
-		GroupId:      42 * 3,
-		Size:         42 * 4,
+		UserId:       42 * 3,
+		GroupId:      42 * 4,
+		Size:         42 * 5,
 		ModifcatedAt: time.Now(),
 		CreatedAt:    time.Unix(42, 42),
 	}
@@ -31,6 +32,7 @@ func (s *FSSuite) TestInode_WriteRead(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Assert(i.Id, Equals, o.Id)
+	c.Assert(i.BlockSize, Equals, o.BlockSize)
 	c.Assert(i.Mode, Equals, o.Mode)
 	c.Assert(i.UserId, Equals, o.UserId)
 	c.Assert(i.GroupId, Equals, o.GroupId)

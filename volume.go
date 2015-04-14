@@ -220,7 +220,6 @@ func (v *Volume) OpenFile(name string, flag int, perm os.FileMode) (file *File, 
 }
 
 func (v *Volume) readFile(f *File, name []byte) error {
-	firstBlock := []byte(fmt.Sprintf(BlockPattern, 0))
 	return v.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(rootBucket)
 		if b == nil {
@@ -234,7 +233,7 @@ func (v *Volume) readFile(f *File, name []byte) error {
 
 		blocks.ForEach(func(k, v []byte) error {
 			buf := bytes.NewBuffer(v)
-			if bytes.Equal(k, firstBlock) {
+			if bytes.Equal(k, BlockInode) {
 				if err := f.inode.Read(buf); err != nil {
 					if err == io.EOF {
 						return notFoundError
@@ -242,6 +241,8 @@ func (v *Volume) readFile(f *File, name []byte) error {
 
 					return err
 				}
+
+				return nil
 			}
 
 			if _, err := io.Copy(f.buf, buf); err != nil {
@@ -278,12 +279,40 @@ func (v *Volume) Create(name string) (file *File, err error) {
 // Stat returns a FileInfo describing the named file.
 // If there is an error, it will be of type *PathError.
 func (v *Volume) Stat(name string) (os.FileInfo, error) {
-	f, err := v.Open(v.getFullpath(name))
-	if err != nil {
-		return nil, err
+	fname := v.getFullpath(name)
+
+	i := &Inode{}
+	err := v.readInode(i, []byte(fname))
+	if err != nil && err != foundError {
+		return nil, &os.PathError{"stat", fname, err}
 	}
 
-	return f.Stat()
+	return &FileInfo{fname, *i}, nil
+}
+
+func (v *Volume) readInode(i *Inode, name []byte) error {
+	return v.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(rootBucket)
+		if b == nil {
+			return notFoundError
+		}
+
+		blocks := b.Bucket(name)
+		if blocks == nil {
+			return notFoundError
+		}
+
+		buf := bytes.NewBuffer(blocks.Get(BlockInode))
+		if err := i.Read(buf); err != nil {
+			if err == io.EOF {
+				return notFoundError
+			}
+
+			return err
+		}
+
+		return foundError
+	})
 }
 
 // Find return the names of the files matching with the function matcher
@@ -313,9 +342,16 @@ func (v *Volume) Close() error {
 
 const BlockPattern = "block.%d"
 
+var BlockInode = []byte("block.inode")
+
 func (v *Volume) writeFile(f *File) error {
 	return v.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(rootBucket)
+		if err != nil {
+			return err
+		}
+
+		blocks, err := b.CreateBucketIfNotExists([]byte(f.name))
 		if err != nil {
 			return err
 		}
@@ -325,12 +361,11 @@ func (v *Volume) writeFile(f *File) error {
 			return err
 		}
 
-		blocks, err := b.CreateBucketIfNotExists([]byte(f.name))
-		if err != nil {
+		if err := blocks.Put(BlockInode, buf.Bytes()); err != nil {
 			return err
 		}
 
-		if err = v.writeFileBlocks(blocks, f, buf); err != nil {
+		if err = v.writeFileBlocks(blocks, f); err != nil {
 			return err
 		}
 
@@ -338,11 +373,12 @@ func (v *Volume) writeFile(f *File) error {
 	})
 }
 
-func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File, buf *bytes.Buffer) error {
+func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File) error {
 	r := bytes.NewReader(f.buf.Bytes())
 	current := 0
 	next := true
 	for next {
+		buf := bytes.NewBuffer(nil)
 		if _, err := io.CopyN(buf, r, int64(f.inode.BlockSize)); err != nil {
 			if err == io.EOF {
 				next = false
@@ -352,8 +388,7 @@ func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File, buf *bytes.Buffer) err
 		}
 
 		name := fmt.Sprintf(BlockPattern, current)
-		bytes := append([]byte{}, buf.Bytes()...)
-		if err := b.Put([]byte(name), bytes); err != nil {
+		if err := b.Put([]byte(name), buf.Bytes()); err != nil {
 			return err
 		}
 

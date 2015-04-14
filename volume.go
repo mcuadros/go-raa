@@ -8,7 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/boltdb/bolt"
+	"code.google.com/p/snappy-go/snappy"
+	"github.com/mcuadros/bolt"
 )
 
 type Volume struct {
@@ -27,7 +28,7 @@ var (
 
 //NewVolume create or open a Volume
 func NewVolume(dbFile string) (*Volume, error) {
-	db, err := bolt.Open(dbFile, 0600, nil)
+	db, err := bolt.Open(dbFile, 0600, &bolt.Options{MinMmapSize: 2})
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +233,8 @@ func (v *Volume) readFile(f *File, name []byte) error {
 		}
 
 		blocks.ForEach(func(k, v []byte) error {
-			buf := bytes.NewBuffer(v)
 			if bytes.Equal(k, BlockInode) {
+				buf := bytes.NewBuffer(v)
 				if err := f.inode.Read(buf); err != nil {
 					if err == io.EOF {
 						return notFoundError
@@ -245,6 +246,12 @@ func (v *Volume) readFile(f *File, name []byte) error {
 				return nil
 			}
 
+			dec, err := snappy.Decode(nil, v)
+			if err != nil {
+				return err
+			}
+
+			buf := bytes.NewBuffer(dec)
 			if _, err := io.Copy(f.buf, buf); err != nil {
 				return err
 			}
@@ -388,7 +395,12 @@ func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File) error {
 		}
 
 		name := fmt.Sprintf(BlockPattern, current)
-		if err := b.Put([]byte(name), buf.Bytes()); err != nil {
+		enc, err := snappy.Encode(nil, buf.Bytes())
+		if err != nil {
+			return err
+		}
+
+		if err := b.Put([]byte(name), enc); err != nil {
 			return err
 		}
 

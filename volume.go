@@ -220,6 +220,7 @@ func (v *Volume) OpenFile(name string, flag int, perm os.FileMode) (file *File, 
 }
 
 func (v *Volume) readFile(f *File, name []byte) error {
+	firstBlock := []byte(fmt.Sprintf(BlockPattern, 0))
 	return v.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(rootBucket)
 		if b == nil {
@@ -231,19 +232,24 @@ func (v *Volume) readFile(f *File, name []byte) error {
 			return notFoundError
 		}
 
-		key := []byte(fmt.Sprintf(BlockPattern, 0))
-		buf := bytes.NewBuffer(blocks.Get(key))
-		if err := f.inode.Read(buf); err != nil {
-			if err == io.EOF {
-				return notFoundError
+		blocks.ForEach(func(k, v []byte) error {
+			buf := bytes.NewBuffer(v)
+			if bytes.Equal(k, firstBlock) {
+				if err := f.inode.Read(buf); err != nil {
+					if err == io.EOF {
+						return notFoundError
+					}
+
+					return err
+				}
 			}
 
-			return err
-		}
+			if _, err := io.Copy(f.buf, buf); err != nil {
+				return err
+			}
 
-		if _, err := io.Copy(f.buf, buf); err != nil {
-			return err
-		}
+			return nil
+		})
 
 		return foundError
 	})
@@ -346,7 +352,8 @@ func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File, buf *bytes.Buffer) err
 		}
 
 		name := fmt.Sprintf(BlockPattern, current)
-		if err := b.Put([]byte(name), buf.Bytes()); err != nil {
+		bytes := append([]byte{}, buf.Bytes()...)
+		if err := b.Put([]byte(name), bytes); err != nil {
 			return err
 		}
 

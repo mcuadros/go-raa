@@ -2,6 +2,7 @@ package raa
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 
 	. "gopkg.in/check.v1"
@@ -127,6 +128,11 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(fsFile.inode.Size, Equals, int64(26334208))
 	c.Assert(fsFile.buf.Len(), Equals, 26334208)
+
+	osFile.Seek(0, 0)
+	content, err := ioutil.ReadAll(osFile)
+	c.Assert(err, IsNil)
+	c.Assert(fsFile.Bytes(), DeepEquals, content)
 }
 
 func (s *FSSuite) TestFile_Read(c *C) {

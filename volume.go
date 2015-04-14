@@ -94,7 +94,7 @@ func (v *Volume) Remove(name string) error {
 	key := []byte(fname)
 	return v.iterateKeys(func(b *bolt.Bucket, k, v []byte) error {
 		if bytes.Equal(k, key) {
-			if err := b.Delete(k); err != nil {
+			if err := b.DeleteBucket(k); err != nil {
 				return err
 			}
 
@@ -115,7 +115,7 @@ func (v *Volume) RemoveAll(path string) error {
 	keySlash := []byte(filepath.Join(path, "/") + "/")
 	return v.iterateKeys(func(b *bolt.Bucket, k, v []byte) error {
 		if bytes.Equal(k, key) || bytes.HasPrefix(k, keySlash) {
-			if err := b.Delete(k); err != nil {
+			if err := b.DeleteBucket(k); err != nil {
 				return err
 			}
 
@@ -226,7 +226,13 @@ func (v *Volume) readFile(f *File, name []byte) error {
 			return notFoundError
 		}
 
-		buf := bytes.NewBuffer(b.Get(name))
+		blocks := b.Bucket(name)
+		if blocks == nil {
+			return notFoundError
+		}
+
+		key := []byte(fmt.Sprintf(BlockPattern, 0))
+		buf := bytes.NewBuffer(blocks.Get(key))
 		if err := f.inode.Read(buf); err != nil {
 			if err == io.EOF {
 				return notFoundError
@@ -299,7 +305,7 @@ func (v *Volume) Close() error {
 	return v.db.Close()
 }
 
-const BlockFilePattern = "|block.%d"
+const BlockPattern = "block.%d"
 
 func (v *Volume) writeFile(f *File) error {
 	return v.db.Update(func(tx *bolt.Tx) error {
@@ -313,7 +319,12 @@ func (v *Volume) writeFile(f *File) error {
 			return err
 		}
 
-		if err = v.writeFileBlocks(b, f, buf); err != nil {
+		blocks, err := b.CreateBucketIfNotExists([]byte(f.name))
+		if err != nil {
+			return err
+		}
+
+		if err = v.writeFileBlocks(blocks, f, buf); err != nil {
 			return err
 		}
 
@@ -322,12 +333,11 @@ func (v *Volume) writeFile(f *File) error {
 }
 
 func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File, buf *bytes.Buffer) error {
-	filename := []byte(f.name)
-	name := filename
+	r := bytes.NewReader(f.buf.Bytes())
 	current := 0
 	next := true
 	for next {
-		if _, err := io.CopyN(buf, f.buf, int64(f.inode.BlockSize)); err != nil {
+		if _, err := io.CopyN(buf, r, int64(f.inode.BlockSize)); err != nil {
 			if err == io.EOF {
 				next = false
 			} else {
@@ -335,13 +345,13 @@ func (v *Volume) writeFileBlocks(b *bolt.Bucket, f *File, buf *bytes.Buffer) err
 			}
 		}
 
-		if err := b.Put(name, buf.Bytes()); err != nil {
+		name := fmt.Sprintf(BlockPattern, current)
+		if err := b.Put([]byte(name), buf.Bytes()); err != nil {
 			return err
 		}
 
 		current++
-		name = append(filename, []byte(fmt.Sprintf(BlockFilePattern, current))...)
-		buf.Truncate(0)
+		buf.Reset()
 	}
 
 	return nil

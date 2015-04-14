@@ -1,7 +1,6 @@
 package raa
 
 import (
-	"bytes"
 	"io"
 	"os"
 
@@ -158,14 +157,7 @@ func (s *FSSuite) TestFile_ReadInNonReadable(c *C) {
 }
 
 func (s *FSSuite) TestFile_Close(c *C) {
-	v, err := NewVolume(TestRAAFile)
-	if err != nil {
-		panic(err)
-	}
-
-	defer v.Close()
-
-	f, err := v.Create("foo")
+	f, err := s.v.Create("foo")
 	c.Assert(err, IsNil)
 
 	err = f.Close()

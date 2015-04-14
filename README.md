@@ -1,6 +1,6 @@
 raa - Random Access Archive
 ===========================
-[![Build Status](https://travis-ci.org/mcuadros/go-raa.png?branch=master)](https://travis-ci.org/mcuadros/go-raa) [![GoDoc](http://godoc.org/github.com/mcuadros/go-raa?status.png)](http://godoc.org/github.com/mcuadros/go-raa) [![GitHub release](https://img.shields.io/github/release/mcuadros/go-raa.svg)](https://github.com/mcuadros/go-raa/releases)
+[![Build Status](https://travis-ci.org/mcuadros/go-raa.png?branch=master)](https://travis-ci.org/mcuadros/go-raa) [![Coverage Status](https://coveralls.io/repos/mcuadros/go-raa/badge.svg?branch=master)](https://coveralls.io/r/mcuadros/go-raa?branch=master) [![GoDoc](http://godoc.org/github.com/mcuadros/go-raa?status.png)](http://godoc.org/github.com/mcuadros/go-raa) [![GitHub release](https://img.shields.io/github/release/mcuadros/go-raa.svg)](https://github.com/mcuadros/go-raa/releases)
 
 
 raa is a file container, similar to tar or zip, focused on allowing constant-time random file access with linear memory consumption increase.

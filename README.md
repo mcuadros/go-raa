@@ -15,7 +15,7 @@ Installation
 The recommended way to install raa
 
 ```
-go get github.com/mcuadros/go-raa
+go get -u github.com/mcuadros/go-raa/...
 ```
 
 Example

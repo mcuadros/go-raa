@@ -35,6 +35,10 @@ func (s *FSSuite) SetUpTest(c *C) {
 	}
 }
 
+func (s *FSSuite) TestPah(c *C) {
+	c.Assert(s.v.Path(), Equals, s.file)
+}
+
 func (s *FSSuite) TestVolume_ChdirAndGetcwd(c *C) {
 	c.Assert(s.v.path, Equals, "/")
 

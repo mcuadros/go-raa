@@ -26,7 +26,7 @@ var (
 	unableToReadHeader = errors.New("unable to read the file header")
 )
 
-//NewVolume create or open a Volume
+// NewVolume create or open a Volume
 func NewVolume(dbFile string) (*Volume, error) {
 	db, err := bolt.Open(dbFile, 0600, &bolt.Options{MinMmapSize: 2})
 	if err != nil {
@@ -34,6 +34,11 @@ func NewVolume(dbFile string) (*Volume, error) {
 	}
 
 	return &Volume{path: "/", db: db}, nil
+}
+
+// Path returns the path to currently open volume file.
+func (v *Volume) Path() string {
+	return v.db.Path()
 }
 
 // Chdir changes the current working directory to the named directory.

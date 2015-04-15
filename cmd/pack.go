@@ -8,21 +8,20 @@ import (
 )
 
 type CmdPack struct {
-	Args struct {
-		Output string   `positional-arg-name:"output" description:"write the archive to the specified file."`
-		Input  []string `positional-arg-name:"input" description:"files or directories to be add to the archive."`
+	cmd
+	Input struct {
+		Files []string `positional-arg-name:"input" description:"files or directories to be add to the archive."`
 	} `positional-args:"yes"`
-
-	v *raa.Volume
 }
 
 func (c *CmdPack) Execute(args []string) error {
+	fmt.Println(c)
 	if err := c.validate(); err != nil {
 		return err
 	}
 
 	if err := c.do(); err != nil {
-		if err := os.Remove(c.Args.Output); err != nil {
+		if err := os.Remove(c.Args.File); err != nil {
 			return err
 		}
 
@@ -45,34 +44,24 @@ func (c *CmdPack) do() error {
 }
 
 func (c *CmdPack) validate() error {
-	if c.Args.Output == "" {
-		return fmt.Errorf("Invalid output file %q", c.Args.Output)
+	if err := c.cmd.validate(); err != nil {
+		return err
 	}
 
-	if _, err := os.Stat(c.Args.Output); err == nil {
-		return fmt.Errorf("Invalid output file %q, file already exists", c.Args.Output)
+	if _, err := os.Stat(c.Args.File); err == nil {
+		return fmt.Errorf("Invalid output file %q, file already exists", c.Args.File)
 	}
 
-	if len(c.Args.Input) == 0 {
+	if len(c.Input.Files) == 0 {
 		return fmt.Errorf("Invalid input count, please add one or more input files/dirs")
 	}
 
 	return nil
 }
 
-func (c *CmdPack) buildVolume() error {
-	v, err := raa.NewVolume(c.Args.Output)
-	if err != nil {
-		return err
-	}
-
-	c.v = v
-	return nil
-}
-
 func (c *CmdPack) processInputToVolume() error {
 	target := "/"
-	for _, file := range c.Args.Input {
+	for _, file := range c.Input.Files {
 		fi, err := os.Stat(file)
 		if err != nil {
 			return fmt.Errorf("Invalid input file/dir %q, no such file", file)

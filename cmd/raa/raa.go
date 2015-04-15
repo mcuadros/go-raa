@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mcuadros/raa"
+	"github.com/mcuadros/go-raa"
 
 	"github.com/jessevdk/go-flags"
 )

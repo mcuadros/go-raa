@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/mcuadros/raa"
+	"github.com/mcuadros/go-raa"
 )
 
 const FixtureTarPattern = "fixtures/%d_files.tar"

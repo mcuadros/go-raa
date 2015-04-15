@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/mcuadros/raa"
+	"github.com/mcuadros/go-raa"
 
 	. "gopkg.in/check.v1"
 )

@@ -93,7 +93,7 @@ func AddTarContent(v *Volume, file io.Reader, to string) (int, error) {
 		}
 
 		switch hdr.Typeflag {
-		case tar.TypeReg:
+		case tar.TypeRegA, tar.TypeReg:
 			if err := readFileFromTar(v, reader, hdr, to); err != nil {
 				return count, err
 			}

@@ -15,7 +15,6 @@ type CmdPack struct {
 }
 
 func (c *CmdPack) Execute(args []string) error {
-	fmt.Println(c)
 	if err := c.validate(); err != nil {
 		return err
 	}

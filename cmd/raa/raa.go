@@ -12,6 +12,7 @@ import (
 func main() {
 	parser := flags.NewNamedParser("raa", flags.Default)
 	parser.AddCommand("pack", "Create a new archive containing the specified items.", "", &CmdPack{})
+	parser.AddCommand("unpack", "Extract to disk from the archive.", "", &CmdUnpack{})
 	parser.AddCommand("list", "List the items contained on a file.", "", &CmdList{})
 	parser.AddCommand("stats", "Display some stats about the file.", "", &CmdStats{})
 
@@ -23,7 +24,7 @@ func main() {
 
 type cmd struct {
 	Args struct {
-		File string `positional-arg-name:"output" required:"true" description:"a raa file."`
+		File string `positional-arg-name:"raa-file" required:"true" description:"raa file."`
 	} `positional-args:"yes"`
 
 	v *raa.Volume
@@ -31,7 +32,7 @@ type cmd struct {
 
 func (c *cmd) validate() error {
 	if c.Args.File == "" {
-		return fmt.Errorf("Invalid raa file %q", c.Args.File)
+		return fmt.Errorf("Missing raa file, please provide a valid one.")
 	}
 	return nil
 }

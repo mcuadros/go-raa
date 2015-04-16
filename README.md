@@ -29,27 +29,27 @@ Import the package:
 import "github.com/mcuadros/go-raa"
 ```
 
-Create a new archive file respredented by a `Volume`:
+Create a new archive file respredented by a `Archive`:
 
 ```go
-v, err = raa.NewVolume("example.raa")
+a, err = raa.CreateArchive("example.raa")
 if err != nil {
     panic(err)
 }
 ```
 
-Add a new file to your new `Volume`:
+Add a new file to your new `Archive`:
 
 ```go
-f, _ := v.Create("/hello.txt")
+f, _ := a.Create("/hello.txt")
 defer f.Close()
 f.WriteString("Hello World!")
 ```
 
-And now you can read the file contained on the `Volume`:
+And now you can read the file contained on the `Archive`:
 
 ```go
-f, _ := v.Open("/hello.txt")
+f, _ := a.Open("/hello.txt")
 defer f.Close()
 content, _ := ioutil.ReadAll(f)
 fmt.Println(string(content))

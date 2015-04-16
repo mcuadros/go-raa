@@ -15,9 +15,14 @@ func main() {
 	parser.AddCommand("unpack", "Extract to disk from the archive.", "", &CmdUnpack{})
 	parser.AddCommand("list", "List the items contained on a file.", "", &CmdList{})
 	parser.AddCommand("stats", "Display some stats about the file.", "", &CmdStats{})
+	parser.AddCommand("version", "Show the version information.", "", &CmdVersion{})
 
 	_, err := parser.Parse()
 	if err != nil {
+		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrCommandRequired {
+			parser.WriteHelp(os.Stdout)
+		}
+
 		os.Exit(1)
 	}
 }

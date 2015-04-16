@@ -26,8 +26,25 @@ var (
 	unableToReadHeader = errors.New("unable to read the file header")
 )
 
-// CreateArchive create or open a Archive
+// CreateArchive create an archive raa file
 func CreateArchive(dbFile string) (*Archive, error) {
+	if _, err := os.Stat(dbFile); err == nil {
+		return nil, foundError
+	}
+
+	return newArchive(dbFile)
+}
+
+// OpenArchive open an archive raa file
+func OpenArchive(dbFile string) (*Archive, error) {
+	if _, err := os.Stat(dbFile); err != nil {
+		return nil, notFoundError
+	}
+
+	return newArchive(dbFile)
+}
+
+func newArchive(dbFile string) (*Archive, error) {
 	db, err := bolt.Open(dbFile, 0600, &bolt.Options{MinMmapSize: 2})
 	if err != nil {
 		return nil, err

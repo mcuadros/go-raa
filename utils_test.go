@@ -96,7 +96,7 @@ func (s *FSSuite) TestAddTarContent(c *C) {
 
 	s.a.Close()
 
-	v, err := CreateArchive(s.file)
+	v, err := OpenArchive(s.file)
 	if err != nil {
 		panic(err)
 	}

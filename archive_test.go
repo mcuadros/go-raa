@@ -35,7 +35,12 @@ func (s *FSSuite) SetUpTest(c *C) {
 	}
 }
 
-func (s *FSSuite) TestPah(c *C) {
+func (s *FSSuite) TestOpenArchive(c *C) {
+	_, err := OpenArchive("/foo/bar")
+	c.Assert(err, Equals, notFoundError)
+}
+
+func (s *FSSuite) TestPath(c *C) {
 	c.Assert(s.a.Path(), Equals, s.file)
 }
 

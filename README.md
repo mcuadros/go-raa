@@ -7,6 +7,8 @@ raa is a file container, similar to tar or zip, focused on allowing constant-tim
 
 The library implements a very similar API to the go [os package](http://golang.org/pkg/os/#File), allowing full control over and low level acces to the contained files. raa is based on [boltdb](https://github.com/boltdb/bolt), a low-level key/value database for Go.
 
+- [Library reference](http://godoc.org/github.com/mcuadros/go-raa)
+- [Command-line interface](#cli)
 
 
 Installation
@@ -52,6 +54,27 @@ defer f.Close()
 content, _ := ioutil.ReadAll(f)
 fmt.Println(string(content))
 //Output: Hello World!
+```
+
+
+<a name="cli"></a>Command-line interface
+----------------------
+raa cli interface, is a convinient command that helps you to creates and manipulates raa files.
+
+Output from: `./raa --help`:
+
+```
+Usage:
+  raa [OPTIONS] <command>
+
+Help Options:
+  -h, --help  Show this help message
+
+Available commands:
+  list    List the items contained on a file.
+  pack    Create a new archive containing the specified items.
+  stats   Display some stats about the file.
+  unpack  Extract to disk from the archive.
 ```
 
 License

@@ -12,27 +12,33 @@ import (
 )
 
 const FixtureTarPattern = "fixtures/%d_files.tar"
-const FixtureDbParttern = "fixtures/%d_files.raa"
+const FixtureRaaParttern = "fixtures/%d_files.raa"
 
-func buildVolumeFromTar(numFiles int) []string {
+func buildVolumeFromTarAndGetFiles(pattern string, numFiles int) []string {
+	v := buildVolumeFromTar(pattern, numFiles)
+	defer v.Close()
+
+	return v.Find(func(string) bool { return true })
+}
+
+func buildVolumeFromTar(pattern string, numFiles int) *raa.Volume {
 	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, numFiles))
 	ifErrPanic(err)
 	defer file.Close()
 
-	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, numFiles))
+	v, err := raa.NewVolume(fmt.Sprintf(pattern, numFiles))
 	ifErrPanic(err)
-	defer v.Close()
 
 	_, err = raa.AddTarContent(v, file, "/")
 	ifErrPanic(err)
 
-	return v.Find(func(string) bool { return true })
+	return v
 }
 
 func openDbAndReadFile(files int, names []string) {
 	randomFile := names[rand.Intn(len(names))]
 
-	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, files))
+	v, err := raa.NewVolume(fmt.Sprintf(FixtureRaaParttern, files))
 	if err != nil {
 		panic(err)
 	}

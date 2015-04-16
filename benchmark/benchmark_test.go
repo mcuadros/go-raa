@@ -3,6 +3,7 @@ package benchmark
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/mcuadros/go-raa"
@@ -24,9 +25,10 @@ var files820 []string
 
 func (s *FSSuite) SetUpSuite(c *C) {
 	rand.Seed(RandomSeed)
-	files78 = buildVolumeFromTar(78)
-	files6133 = buildVolumeFromTar(6133)
-	files820 = buildVolumeFromTar(820)
+
+	files78 = buildVolumeFromTarAndGetFiles(FixtureRaaParttern, 78)
+	files820 = buildVolumeFromTarAndGetFiles(FixtureRaaParttern, 820)
+	files6133 = buildVolumeFromTarAndGetFiles(FixtureRaaParttern, 6133)
 }
 
 func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_78(c *C) {
@@ -65,8 +67,32 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6k(c *C) {
 	}
 }
 
+func (s *FSSuite) BenchmarkCreatingDb_78(c *C) {
+	for i := 0; i < c.N; i++ {
+		v := buildVolumeFromTar(fmt.Sprintf("/tmp/foo_%d", i), 78)
+		v.Close()
+		os.Remove(v.Path())
+	}
+}
+
+func (s *FSSuite) BenchmarkCreatingDb_1k(c *C) {
+	for i := 0; i < c.N; i++ {
+		v := buildVolumeFromTar(fmt.Sprintf("/tmp/foo_%d", i), 820)
+		v.Close()
+		os.Remove(v.Path())
+	}
+}
+
+func (s *FSSuite) BenchmarkCreatingDb_6k(c *C) {
+	for i := 0; i < c.N; i++ {
+		v := buildVolumeFromTar(fmt.Sprintf("/tmp/foo_%d", i), 6133)
+		v.Close()
+		os.Remove(v.Path())
+	}
+}
+
 func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
-	v, err := raa.NewVolume(fmt.Sprintf(FixtureDbParttern, 6133))
+	v, err := raa.NewVolume(fmt.Sprintf(FixtureRaaParttern, 6133))
 	if err != nil {
 		panic(err)
 	}

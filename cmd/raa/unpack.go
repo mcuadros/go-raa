@@ -35,7 +35,7 @@ func (c *CmdUnpack) Execute(args []string) error {
 		return err
 	}
 
-	if err := c.buildVolume(); err != nil {
+	if err := c.buildArchive(); err != nil {
 		return err
 	}
 
@@ -81,7 +81,7 @@ func (c *CmdUnpack) validate() error {
 }
 
 func (c *CmdUnpack) do() error {
-	for _, fname := range c.v.Find(c.matchingFunc) {
+	for _, fname := range c.a.Find(c.matchingFunc) {
 		c.extract(fname)
 	}
 
@@ -89,7 +89,7 @@ func (c *CmdUnpack) do() error {
 }
 
 func (c *CmdUnpack) extract(srcName string) {
-	src, err := c.v.Open(srcName)
+	src, err := c.a.Open(srcName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to open %q for read: %s\n", srcName, err.Error())
 		return

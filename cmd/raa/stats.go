@@ -13,11 +13,11 @@ type CmdStats struct {
 }
 
 func (c *CmdStats) Execute(args []string) error {
-	if err := c.buildVolume(); err != nil {
+	if err := c.buildArchive(); err != nil {
 		return err
 	}
 
-	defer c.v.Close()
+	defer c.a.Close()
 	if err := c.displayStats(); err != nil {
 		return err
 	}
@@ -31,9 +31,9 @@ func (c *CmdStats) displayStats() error {
 	tSize := sumMapInt64(size)
 	tCount := sumMapInt64(count)
 
-	fmt.Println("File:\t\t\t", c.v.Path())
+	fmt.Println("File:\t\t\t", c.a.Path())
 
-	fi, err := os.Stat(c.v.Path())
+	fi, err := os.Stat(c.a.Path())
 	if err != nil {
 		return err
 	}
@@ -63,8 +63,8 @@ func (c *CmdStats) collectStats() (map[string]int64, map[string]int64) {
 	size := make(map[string]int64, 0)
 	count := make(map[string]int64, 0)
 
-	for _, file := range c.v.Find(func(string) bool { return true }) {
-		fi, _ := c.v.Stat(file)
+	for _, file := range c.a.Find(func(string) bool { return true }) {
+		fi, _ := c.a.Stat(file)
 
 		ext := filepath.Ext(file)
 		if _, ok := size[ext]; !ok {

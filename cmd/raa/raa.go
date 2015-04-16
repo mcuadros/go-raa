@@ -27,7 +27,7 @@ type cmd struct {
 		File string `positional-arg-name:"raa-file" required:"true" description:"raa file."`
 	} `positional-args:"yes"`
 
-	v *raa.Volume
+	a *raa.Archive
 }
 
 func (c *cmd) validate() error {
@@ -37,12 +37,12 @@ func (c *cmd) validate() error {
 	return nil
 }
 
-func (c *cmd) buildVolume() error {
-	v, err := raa.NewVolume(c.Args.File)
+func (c *cmd) buildArchive() error {
+	a, err := raa.CreateArchive(c.Args.File)
 	if err != nil {
 		return err
 	}
 
-	c.v = v
+	c.a = a
 	return nil
 }

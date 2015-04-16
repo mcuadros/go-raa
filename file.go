@@ -22,7 +22,7 @@ type File struct {
 	inode Inode
 	flag  int
 	buf   *bytes.Buffer
-	v     *Volume
+	a     *Archive
 
 	isClosed   bool
 	isWritable bool
@@ -30,7 +30,7 @@ type File struct {
 	isSync     bool
 }
 
-func newFile(v *Volume, name string, flag int, mode os.FileMode) *File {
+func newFile(a *Archive, name string, flag int, mode os.FileMode) *File {
 	return &File{
 		name: name,
 		inode: Inode{
@@ -43,7 +43,7 @@ func newFile(v *Volume, name string, flag int, mode os.FileMode) *File {
 		},
 		flag: flag,
 		buf:  bytes.NewBuffer(nil),
-		v:    v,
+		a:    a,
 
 		isReadable: isReadable(flag),
 		isWritable: isWritable(flag),
@@ -59,7 +59,7 @@ func (f *File) Chdir() error {
 		return &os.PathError{"chdir", f.name, NotDirectoryErr}
 	}
 
-	return f.v.Chdir(f.name)
+	return f.a.Chdir(f.name)
 }
 
 // Chmod changes the mode of the file to mode.
@@ -121,7 +121,7 @@ func (f *File) Stat() (os.FileInfo, error) {
 
 // Sync commits the current contents of the file to stable storage.
 func (f *File) Sync() error {
-	return f.v.writeFile(f)
+	return f.a.writeFile(f)
 }
 
 // Truncate changes the size of the file.

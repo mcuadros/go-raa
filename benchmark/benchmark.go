@@ -21,24 +21,24 @@ func buildVolumeFromTarAndGetFiles(pattern string, numFiles int) []string {
 	return v.Find(func(string) bool { return true })
 }
 
-func buildVolumeFromTar(pattern string, numFiles int) *raa.Volume {
+func buildVolumeFromTar(pattern string, numFiles int) *raa.Archive {
 	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, numFiles))
 	ifErrPanic(err)
 	defer file.Close()
 
-	v, err := raa.NewVolume(fmt.Sprintf(pattern, numFiles))
+	a, err := raa.CreateArchive(fmt.Sprintf(pattern, numFiles))
 	ifErrPanic(err)
 
-	_, err = raa.AddTarContent(v, file, "/")
+	_, err = raa.AddTarContent(a, file, "/")
 	ifErrPanic(err)
 
-	return v
+	return a
 }
 
 func openDbAndReadFile(files int, names []string) {
 	randomFile := names[rand.Intn(len(names))]
 
-	v, err := raa.NewVolume(fmt.Sprintf(FixtureRaaParttern, files))
+	v, err := raa.CreateArchive(fmt.Sprintf(FixtureRaaParttern, files))
 	if err != nil {
 		panic(err)
 	}

@@ -17,11 +17,11 @@ func (s *FSSuite) TestAddFile(c *C) {
 	src.Chmod(0555)
 	src.Close()
 
-	n, err := AddFile(s.v, src.Name(), "/bar")
+	n, err := AddFile(s.a, src.Name(), "/bar")
 	c.Assert(n, Equals, int64(3))
 	c.Assert(err, IsNil)
 
-	dst, err := s.v.Open("/bar")
+	dst, err := s.a.Open("/bar")
 	dst.Close()
 	c.Assert(err, IsNil)
 	c.Assert(int(dst.inode.Mode), Equals, 0555)
@@ -30,16 +30,16 @@ func (s *FSSuite) TestAddFile(c *C) {
 func (s *FSSuite) TestAddGlob(c *C) {
 	dir := makeDirFixture()
 
-	n, err := AddGlob(s.v, filepath.Join(dir, "*"), "foo", false)
+	n, err := AddGlob(s.a, filepath.Join(dir, "*"), "foo", false)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
-	dst, err := s.v.Open("/foo/qux")
+	dst, err := s.a.Open("/foo/qux")
 	defer dst.Close()
 	c.Assert(err, IsNil)
 	c.Assert(dst.String(), Equals, "qux")
 
-	dst, err = s.v.Open("/foo/bar")
+	dst, err = s.a.Open("/foo/bar")
 	defer dst.Close()
 	c.Assert(err, IsNil)
 	c.Assert(dst.String(), Equals, "bar")
@@ -48,11 +48,11 @@ func (s *FSSuite) TestAddGlob(c *C) {
 func (s *FSSuite) TestAddGlob_Rescursive(c *C) {
 	dir := makeDirFixture()
 
-	n, err := AddGlob(s.v, filepath.Join(dir, "*"), "foo", true)
+	n, err := AddGlob(s.a, filepath.Join(dir, "*"), "foo", true)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 3)
 
-	dst, err := s.v.Open("/foo/baz/baz")
+	dst, err := s.a.Open("/foo/baz/baz")
 	defer dst.Close()
 	c.Assert(err, IsNil)
 	c.Assert(dst.String(), Equals, "baz")
@@ -90,13 +90,13 @@ func (s *FSSuite) TestAddTarContent(c *C) {
 	f, err := os.Open(smallFileTar)
 	c.Assert(err, IsNil)
 
-	n, err := AddTarContent(s.v, f, "/")
+	n, err := AddTarContent(s.a, f, "/")
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 61)
 
-	s.v.Close()
+	s.a.Close()
 
-	v, err := NewVolume(s.file)
+	v, err := CreateArchive(s.file)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +104,7 @@ func (s *FSSuite) TestAddTarContent(c *C) {
 	AssertVolumeAgainstTar(c, v, smallFileTar, 61)
 }
 
-func AssertVolumeAgainstTar(c *C, v *Volume, tar string, files int) {
+func AssertVolumeAgainstTar(c *C, a *Archive, tar string, files int) {
 	count := 0
 	dir := extractTarToDir(tar)
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
@@ -114,7 +114,7 @@ func AssertVolumeAgainstTar(c *C, v *Volume, tar string, files int) {
 		}
 
 		count++
-		assertFileAgaintsSource(c, v, path, rel)
+		assertFileAgaintsSource(c, a, path, rel)
 		return nil
 	})
 
@@ -122,12 +122,12 @@ func AssertVolumeAgainstTar(c *C, v *Volume, tar string, files int) {
 	c.Assert(count, Equals, files)
 }
 
-func assertFileAgaintsSource(c *C, v *Volume, o, f string) {
+func assertFileAgaintsSource(c *C, a *Archive, o, f string) {
 	orig, err := os.Open(o)
 	defer orig.Close()
 	c.Assert(err, IsNil)
 
-	file, err := v.Open(f)
+	file, err := a.Open(f)
 	defer file.Close()
 	c.Assert(err, IsNil)
 

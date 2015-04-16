@@ -92,7 +92,7 @@ func (s *FSSuite) BenchmarkCreatingDb_6k(c *C) {
 }
 
 func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
-	v, err := raa.NewVolume(fmt.Sprintf(FixtureRaaParttern, 6133))
+	v, err := raa.CreateArchive(fmt.Sprintf(FixtureRaaParttern, 6133))
 	if err != nil {
 		panic(err)
 	}

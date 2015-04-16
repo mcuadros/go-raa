@@ -44,13 +44,13 @@ func (s *FSSuite) TestNewFile(c *C) {
 }
 
 func (s *FSSuite) TestFile_Chdir(c *C) {
-	f, _ := s.v.Create("foo")
+	f, _ := s.a.Create("foo")
 	err := f.Chdir()
 	c.Assert(err, FitsTypeOf, &os.PathError{})
 }
 
 func (s *FSSuite) TestFile_Stat(c *C) {
-	f, err := s.v.Create("foo")
+	f, err := s.a.Create("foo")
 	f.WriteString("foo")
 	c.Assert(err, IsNil)
 
@@ -69,7 +69,7 @@ func (s *FSSuite) TestFile_Write(c *C) {
 }
 
 func (s *FSSuite) TestFile_WriteInClosed(c *C) {
-	f, err := s.v.Create("foo")
+	f, err := s.a.Create("foo")
 	f.Close()
 
 	_, err = f.Write([]byte{'F', 'O', 'O'})
@@ -84,17 +84,17 @@ func (s *FSSuite) TestFile_WriteInNonWritale(c *C) {
 }
 
 func (s *FSSuite) TestFile_WriteInSynced(c *C) {
-	f, _ := s.v.OpenFile("foo", os.O_WRONLY|os.O_SYNC|os.O_CREATE, 0)
+	f, _ := s.a.OpenFile("foo", os.O_WRONLY|os.O_SYNC|os.O_CREATE, 0)
 	f.WriteString("foo")
 
-	r, _ := s.v.OpenFile("foo", os.O_RDONLY, 0)
+	r, _ := s.a.OpenFile("foo", os.O_RDONLY, 0)
 	c.Assert(r.buf.String(), Equals, "foo")
 
 	n, err := f.WriteString("bar")
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 3)
 
-	r, _ = s.v.OpenFile("foo", os.O_RDONLY, 0)
+	r, _ = s.a.OpenFile("foo", os.O_RDONLY, 0)
 	c.Assert(r.buf.String(), Equals, "foobar")
 }
 
@@ -115,7 +115,7 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 
 	defer osFile.Close()
 
-	fsFile, err := s.v.Create("foo")
+	fsFile, err := s.a.Create("foo")
 	c.Assert(err, IsNil)
 
 	n, err := io.Copy(fsFile, osFile)
@@ -124,7 +124,7 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 
 	fsFile.Close()
 
-	fsFile, err = s.v.Open("foo")
+	fsFile, err = s.a.Open("foo")
 	c.Assert(err, IsNil)
 	c.Assert(fsFile.inode.Size, Equals, int64(26334208))
 	c.Assert(fsFile.buf.Len(), Equals, 26334208)
@@ -136,7 +136,7 @@ func (s *FSSuite) TestFile_WriteLongFile(c *C) {
 }
 
 func (s *FSSuite) TestFile_Read(c *C) {
-	f, _ := s.v.Create("foo")
+	f, _ := s.a.Create("foo")
 	f.WriteString("foo")
 	defer f.Close()
 
@@ -148,7 +148,7 @@ func (s *FSSuite) TestFile_Read(c *C) {
 }
 
 func (s *FSSuite) TestFile_ReadInClosed(c *C) {
-	f, _ := s.v.Create("foo")
+	f, _ := s.a.Create("foo")
 	f.Close()
 
 	_, err := f.Read(nil)
@@ -163,7 +163,7 @@ func (s *FSSuite) TestFile_ReadInNonReadable(c *C) {
 }
 
 func (s *FSSuite) TestFile_Close(c *C) {
-	f, err := s.v.Create("foo")
+	f, err := s.a.Create("foo")
 	c.Assert(err, IsNil)
 
 	err = f.Close()

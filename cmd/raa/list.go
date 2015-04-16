@@ -11,11 +11,11 @@ type CmdList struct {
 }
 
 func (c *CmdList) Execute(args []string) error {
-	if err := c.buildVolume(); err != nil {
+	if err := c.buildArchive(); err != nil {
 		return err
 	}
 
-	defer c.v.Close()
+	defer c.a.Close()
 	if err := c.listVolume(); err != nil {
 		return err
 	}
@@ -24,8 +24,8 @@ func (c *CmdList) Execute(args []string) error {
 }
 
 func (c *CmdList) listVolume() error {
-	for _, file := range c.v.Find(func(string) bool { return true }) {
-		fi, _ := c.v.Stat(file)
+	for _, file := range c.a.Find(func(string) bool { return true }) {
+		fi, _ := c.a.Stat(file)
 
 		fmt.Printf("%s %s % 6s %s\n",
 			fi.Mode().Perm(),

@@ -31,7 +31,7 @@ func (c *CmdPack) Execute(args []string) error {
 }
 
 func (c *CmdPack) do() error {
-	if err := c.buildVolume(); err != nil {
+	if err := c.buildArchive(); err != nil {
 		return err
 	}
 
@@ -68,11 +68,11 @@ func (c *CmdPack) processInputToVolume() error {
 
 		switch {
 		case fi.Mode().IsRegular():
-			_, err = raa.AddFile(c.v, file, target)
+			_, err = raa.AddFile(c.a, file, target)
 		case fi.Mode().IsDir():
-			_, err = raa.AddDirectory(c.v, file, target, true)
+			_, err = raa.AddDirectory(c.a, file, target, true)
 		default:
-			_, err = raa.AddGlob(c.v, file, target, true)
+			_, err = raa.AddGlob(c.a, file, target, true)
 		}
 
 		if err != nil {

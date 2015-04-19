@@ -1,15 +1,11 @@
 package raa
 
 import (
-	"io"
-	"io/ioutil"
+	"bytes"
 	"os"
 
 	. "gopkg.in/check.v1"
 )
-
-const bigFileTar = "benchmark/fixtures/6133_files.tar"
-const smallFileTar = "benchmark/fixtures/78_files.tar"
 
 func (s *FSSuite) TestNewFile(c *C) {
 	f := newFile(nil, "foo", os.O_WRONLY, 0042)
@@ -108,31 +104,20 @@ func (s *FSSuite) TestFile_WriteString(c *C) {
 }
 
 func (s *FSSuite) TestFile_WriteLongFile(c *C) {
-	osFile, err := os.Open(bigFileTar)
-	if err != nil {
-		panic(err)
-	}
-
-	defer osFile.Close()
-
+	length := 26334208
 	fsFile, err := s.a.Create("foo")
 	c.Assert(err, IsNil)
 
-	n, err := io.Copy(fsFile, osFile)
+	n, err := fsFile.Write(bytes.Repeat([]byte("f"), length))
 	c.Assert(err, IsNil)
-	c.Assert(n, Equals, int64(26334208))
+	c.Assert(n, Equals, length)
 
 	fsFile.Close()
 
 	fsFile, err = s.a.Open("foo")
 	c.Assert(err, IsNil)
-	c.Assert(fsFile.inode.Size, Equals, int64(26334208))
-	c.Assert(fsFile.buf.Len(), Equals, 26334208)
-
-	osFile.Seek(0, 0)
-	content, err := ioutil.ReadAll(osFile)
-	c.Assert(err, IsNil)
-	c.Assert(fsFile.Bytes(), DeepEquals, content)
+	c.Assert(fsFile.inode.Size, Equals, int64(length))
+	c.Assert(fsFile.buf.Len(), Equals, length)
 }
 
 func (s *FSSuite) TestFile_Read(c *C) {

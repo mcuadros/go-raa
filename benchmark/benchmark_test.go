@@ -1,9 +1,7 @@
 package benchmark
 
 import (
-	"fmt"
 	"math/rand"
-	"os"
 	"testing"
 
 	"github.com/mcuadros/go-raa"
@@ -19,80 +17,89 @@ var _ = Suite(&FSSuite{})
 
 const RandomSeed = 42
 
+var files5 []string
 var files78 []string
 var files6133 []string
 var files820 []string
+var filesBig60 []string
+
+const (
+	kb = 1024
+	mb = kb * 1024
+	gb = mb * 1024
+)
 
 func (s *FSSuite) SetUpSuite(c *C) {
 	rand.Seed(RandomSeed)
+	files5 = fixtureGenerator(5, kb, 100*kb)
+	files78 = fixtureGenerator(100, kb, 100*kb)
+	files820 = fixtureGenerator(1000, kb, 100*kb)
+	files6133 = fixtureGenerator(6000, kb, 100*kb)
+	filesBig60 = fixtureGenerator(60, mb, 20*mb)
 
-	files78 = buildVolumeFromTarAndGetFiles(FixtureRaaParttern, 78)
-	files820 = buildVolumeFromTarAndGetFiles(FixtureRaaParttern, 820)
-	files6133 = buildVolumeFromTarAndGetFiles(FixtureRaaParttern, 6133)
 }
 
-func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_78(c *C) {
+func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_5(c *C) {
 	for i := 0; i < c.N; i++ {
-		openTarAndReadFile(78, files78)
+		openTarAndReadFile(5, kb, 100*kb, files5)
+	}
+}
+
+func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_60(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarAndReadFile(60, mb, 20*mb, filesBig60)
+	}
+}
+
+func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_100(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarAndReadFile(100, kb, 100*kb, files78)
 	}
 }
 
 func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_1k(c *C) {
 	for i := 0; i < c.N; i++ {
-		openTarAndReadFile(820, files820)
+		openTarAndReadFile(1000, kb, 100*kb, files820)
 	}
 }
 
 func (s *FSSuite) BenchmarkReadingRandomFilesFromTar_6k(c *C) {
 	for i := 0; i < c.N; i++ {
-		openTarAndReadFile(6133, files6133)
+		openTarAndReadFile(6000, kb, 100*kb, files6133)
 	}
 }
 
-func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_78(c *C) {
+func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6(c *C) {
 	for i := 0; i < c.N; i++ {
-		openDbAndReadFile(78, files78)
+		openDbAndReadFile(60, mb, 20*mb, filesBig60)
+	}
+}
+
+func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_5(c *C) {
+	for i := 0; i < c.N; i++ {
+		openDbAndReadFile(5, kb, 100*kb, files5)
+	}
+}
+func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_100(c *C) {
+	for i := 0; i < c.N; i++ {
+		openDbAndReadFile(100, kb, 100*kb, files78)
 	}
 }
 
 func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_1k(c *C) {
 	for i := 0; i < c.N; i++ {
-		openDbAndReadFile(820, files820)
+		openDbAndReadFile(1000, kb, 100*kb, files820)
 	}
 }
 
 func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6k(c *C) {
 	for i := 0; i < c.N; i++ {
-		openDbAndReadFile(6133, files6133)
-	}
-}
-
-func (s *FSSuite) BenchmarkCreatingDb_78(c *C) {
-	for i := 0; i < c.N; i++ {
-		v := buildVolumeFromTar(fmt.Sprintf("/tmp/foo_%d", i), 78)
-		v.Close()
-		os.Remove(v.Path())
-	}
-}
-
-func (s *FSSuite) BenchmarkCreatingDb_1k(c *C) {
-	for i := 0; i < c.N; i++ {
-		v := buildVolumeFromTar(fmt.Sprintf("/tmp/foo_%d", i), 820)
-		v.Close()
-		os.Remove(v.Path())
-	}
-}
-
-func (s *FSSuite) BenchmarkCreatingDb_6k(c *C) {
-	for i := 0; i < c.N; i++ {
-		v := buildVolumeFromTar(fmt.Sprintf("/tmp/foo_%d", i), 6133)
-		v.Close()
-		os.Remove(v.Path())
+		openDbAndReadFile(6000, kb, 100*kb, files6133)
 	}
 }
 
 func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
-	v, err := raa.CreateArchive(fmt.Sprintf(FixtureRaaParttern, 6133))
+	a, err := raa.OpenArchive(getFixtureFilename(6000, kb, 100*kb, "raa"))
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +107,7 @@ func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
 	for i := 0; i < c.N; i++ {
 		randomFile := files6133[rand.Intn(len(files6133))]
 
-		r := v.Find(func(name string) bool {
+		r := a.Find(func(name string) bool {
 			if name == randomFile[1:] {
 				return true
 			}

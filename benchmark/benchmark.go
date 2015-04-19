@@ -8,42 +8,21 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/dustin/go-humanize"
 	"github.com/mcuadros/go-raa"
 )
 
-const FixtureTarPattern = "fixtures/%d_files.tar"
-const FixtureRaaParttern = "fixtures/%d_files.raa"
+const FixturePattern = "/tmp/%d_%s_%s_files.%s"
 
-func buildVolumeFromTarAndGetFiles(pattern string, numFiles int) []string {
-	v := buildVolumeFromTar(pattern, numFiles)
-	defer v.Close()
-
-	return v.Find(func(string) bool { return true })
-}
-
-func buildVolumeFromTar(pattern string, numFiles int) *raa.Archive {
-	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, numFiles))
-	ifErrPanic(err)
-	defer file.Close()
-
-	a, err := raa.CreateArchive(fmt.Sprintf(pattern, numFiles))
-	ifErrPanic(err)
-
-	_, err = raa.AddTarContent(a, file, "/")
-	ifErrPanic(err)
-
-	return a
-}
-
-func openDbAndReadFile(files int, names []string) {
+func openDbAndReadFile(files, minSize, maxSize uint64, names []string) {
 	randomFile := names[rand.Intn(len(names))]
 
-	v, err := raa.CreateArchive(fmt.Sprintf(FixtureRaaParttern, files))
+	a, err := raa.OpenArchive(getFixtureFilename(files, minSize, maxSize, "raa"))
 	if err != nil {
 		panic(err)
 	}
 
-	file, err := v.Open(randomFile)
+	file, err := a.Open(randomFile)
 	ifErrPanic(err)
 
 	buf := bytes.NewBuffer(nil)
@@ -56,12 +35,12 @@ func openDbAndReadFile(files int, names []string) {
 		panic("ws")
 	}
 
-	v.Close()
+	a.Close()
 }
 
-func openTarAndReadFile(files int, names []string) {
+func openTarAndReadFile(files, minSize, maxSize uint64, names []string) {
 	randomFile := names[rand.Intn(len(names))]
-	file, err := os.Open(fmt.Sprintf(FixtureTarPattern, files))
+	file, err := os.Open(getFixtureFilename(files, minSize, maxSize, "tar"))
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +58,7 @@ func openTarAndReadFile(files int, names []string) {
 		_, err = io.Copy(buf, tar)
 		ifErrPanic(err)
 
-		if hdr.Name == randomFile[1:] {
+		if hdr.Name == randomFile {
 			found = true
 			break
 		}
@@ -88,6 +67,66 @@ func openTarAndReadFile(files int, names []string) {
 	if !found {
 		panic("Cannot find file: " + randomFile)
 	}
+}
+
+func getFixtureFilename(files, minSize, maxSize uint64, ext string) string {
+	return fmt.Sprintf(FixturePattern,
+		files,
+		humanize.Bytes(minSize),
+		humanize.Bytes(maxSize),
+		ext,
+	)
+}
+
+func getFixtureRandomSize(minSize, maxSize uint64) int {
+	return int(minSize) + rand.Intn(int(maxSize-minSize))
+}
+
+func fixtureGenerator(files, minSize, maxSize uint64) []string {
+	f, err := os.Create(getFixtureFilename(files, minSize, maxSize, "tar"))
+	if err != nil {
+		ifErrPanic(err)
+	}
+
+	defer f.Close()
+
+	result := make([]string, files)
+	// Create a new tar archive.
+	tw := tar.NewWriter(f)
+	for i := 0; i < int(files); i++ {
+		size := getFixtureRandomSize(minSize, maxSize)
+		fname := fmt.Sprintf("file_%d_%d.foo", i, size)
+		result[i] = fname
+
+		hdr := &tar.Header{
+			Name:     fname,
+			Size:     int64(size),
+			Typeflag: tar.TypeReg,
+		}
+
+		ifErrPanic(tw.WriteHeader(hdr))
+
+		_, err := tw.Write(bytes.Repeat([]byte("f"), size))
+		ifErrPanic(err)
+	}
+
+	ifErrPanic(tw.Close())
+
+	buildVolumeFromTar(files, minSize, maxSize)
+	return result
+}
+
+func buildVolumeFromTar(files, minSize, maxSize uint64) {
+	file, err := os.Open(getFixtureFilename(files, minSize, maxSize, "tar"))
+	ifErrPanic(err)
+	defer file.Close()
+
+	a, err := raa.CreateArchive(getFixtureFilename(files, minSize, maxSize, "raa"))
+	ifErrPanic(err)
+	defer a.Close()
+
+	_, err = raa.AddTarContent(a, file, "/")
+	ifErrPanic(err)
 }
 
 func ifErrPanic(err error) {

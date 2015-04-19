@@ -9,6 +9,8 @@ import (
 	. "gopkg.in/check.v1"
 )
 
+const fixtureSmallTar = "fixtures/fixture_small.tar"
+
 func (s *FSSuite) TestAddFile(c *C) {
 	src, err := ioutil.TempFile("/tmp/", "perms_raa")
 	c.Assert(err, IsNil)
@@ -87,7 +89,7 @@ func makeFileFixture(path, content string) {
 }
 
 func (s *FSSuite) TestAddTarContent(c *C) {
-	f, err := os.Open(smallFileTar)
+	f, err := os.Open(fixtureSmallTar)
 	c.Assert(err, IsNil)
 
 	n, err := AddTarContent(s.a, f, "/")
@@ -101,7 +103,7 @@ func (s *FSSuite) TestAddTarContent(c *C) {
 		panic(err)
 	}
 
-	AssertVolumeAgainstTar(c, v, smallFileTar, 61)
+	AssertVolumeAgainstTar(c, v, fixtureSmallTar, 61)
 }
 
 func AssertVolumeAgainstTar(c *C, a *Archive, tar string, files int) {

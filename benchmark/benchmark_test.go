@@ -98,6 +98,35 @@ func (s *FSSuite) BenchmarkReadingRandomFilesFromDb_6k(c *C) {
 	}
 }
 
+func (s *FSSuite) BenchmarkReadingRandomFilesFromMapped_6(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarMappedAndReadFile(60, mb, 20*mb, filesBig60)
+	}
+}
+
+func (s *FSSuite) BenchmarkReadingRandomFilesFromMapped_5(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarMappedAndReadFile(5, kb, 100*kb, files5)
+	}
+}
+func (s *FSSuite) BenchmarkReadingRandomFilesFromMapped_100(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarMappedAndReadFile(100, kb, 100*kb, files78)
+	}
+}
+
+func (s *FSSuite) BenchmarkReadingRandomFilesFromMapped_1k(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarMappedAndReadFile(1000, kb, 100*kb, files820)
+	}
+}
+
+func (s *FSSuite) BenchmarkReadingRandomFilesFromMapped_6k(c *C) {
+	for i := 0; i < c.N; i++ {
+		openTarMappedAndReadFile(6000, kb, 100*kb, files6133)
+	}
+}
+
 func (s *FSSuite) BenchmarkFindingFilesFromDb_6k(c *C) {
 	a, err := raa.OpenArchive(getFixtureFilename(6000, kb, 100*kb, "raa"))
 	if err != nil {

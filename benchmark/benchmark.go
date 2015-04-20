@@ -10,6 +10,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/mcuadros/go-raa"
+	"github.com/mcuadros/go-rtar"
 )
 
 const FixturePattern = "/tmp/%d_%s_%s_files.%s"
@@ -45,6 +46,7 @@ func openTarAndReadFile(files, minSize, maxSize uint64, names []string) {
 		panic(err)
 	}
 
+	defer file.Close()
 	tar := tar.NewReader(file)
 	found := false
 	for {
@@ -69,6 +71,29 @@ func openTarAndReadFile(files, minSize, maxSize uint64, names []string) {
 	}
 }
 
+func openTarMappedAndReadFile(files, minSize, maxSize uint64, names []string) {
+	randomFile := names[rand.Intn(len(names))]
+	file, err := os.Open(getFixtureFilename(files, minSize, maxSize, "tar"))
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	m, err := os.Open(getFixtureFilename(files, minSize, maxSize, "tar.map"))
+	if err != nil {
+		panic(err)
+	}
+
+	defer m.Close()
+
+	tar, _ := rat.NewReader(file, m)
+	content, err := tar.ReadFile(randomFile)
+	ifErrPanic(err)
+
+	bytes.NewBuffer(content)
+}
+
 func getFixtureFilename(files, minSize, maxSize uint64, ext string) string {
 	return fmt.Sprintf(FixturePattern,
 		files,
@@ -88,11 +113,17 @@ func fixtureGenerator(files, minSize, maxSize uint64) []string {
 		ifErrPanic(err)
 	}
 
+	m, err := os.Create(getFixtureFilename(files, minSize, maxSize, "tar.map"))
+	if err != nil {
+		ifErrPanic(err)
+	}
+
 	defer f.Close()
+	defer m.Close()
 
 	result := make([]string, files)
 	// Create a new tar archive.
-	tw := tar.NewWriter(f)
+	tw := rat.NewWriter(f, m)
 	for i := 0; i < int(files); i++ {
 		size := getFixtureRandomSize(minSize, maxSize)
 		fname := fmt.Sprintf("file_%d_%d.foo", i, size)

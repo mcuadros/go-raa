@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/mcuadros/go-raa"
+
 	"github.com/dustin/go-humanize"
 )
 
@@ -35,7 +37,7 @@ func (c *CmdUnpack) Execute(args []string) error {
 		return err
 	}
 
-	if err := c.buildArchive(); err != nil {
+	if err := c.openArchive(); err != nil {
 		return err
 	}
 
@@ -77,6 +79,16 @@ func (c *CmdUnpack) validate() error {
 		}
 	}
 
+	return nil
+}
+
+func (c *CmdUnpack) openArchive() error {
+	a, err := raa.OpenArchive(c.Args.File)
+	if err != nil {
+		return err
+	}
+
+	c.a = a
 	return nil
 }
 
